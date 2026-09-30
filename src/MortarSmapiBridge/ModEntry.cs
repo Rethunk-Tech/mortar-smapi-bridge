@@ -1,5 +1,5 @@
-using System.Reflection;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -120,6 +120,11 @@ public sealed class ModEntry : Mod
         }
     }
 
+    // SMAPI's reflection helper cannot bind a static property getter, so Game1's static properties are read directly.
+    private static T? StaticProperty<T>(Type type, string name) =>
+        (T?)(type.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingMemberException(type.FullName, name)).GetValue(null);
+
     private static Type? GameType() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, "Stardew Valley", StringComparison.OrdinalIgnoreCase))
@@ -131,8 +136,8 @@ public sealed class ModEntry : Mod
         if (game1 == null)
             return null;
 
-        object? player = helper.Reflection.GetProperty<object>(game1, "player", false)?.GetValue();
-        object? location = helper.Reflection.GetProperty<object>(game1, "currentLocation", false)?.GetValue();
+        object? player = StaticProperty<object>(game1, "player");
+        object? location = StaticProperty<object>(game1, "currentLocation");
         if (player == null || location == null)
             return null;
 
@@ -148,7 +153,7 @@ public sealed class ModEntry : Mod
         return new OverlaySnapshot(
             helper.Reflection.GetProperty<string>(location, "Name", true).GetValue(),
             helper.Reflection.GetProperty<string>(player, "Name", true).GetValue(),
-            helper.Reflection.GetProperty<string>(game1, "currentSeason", true).GetValue(),
+            StaticProperty<string>(game1, "currentSeason") ?? "unknown",
             helper.Reflection.GetField<int>(game1, "dayOfMonth", true).GetValue(),
             helper.Reflection.GetField<int>(game1, "year", true).GetValue(),
             helper.Reflection.GetField<int>(game1, "timeOfDay", true).GetValue(),

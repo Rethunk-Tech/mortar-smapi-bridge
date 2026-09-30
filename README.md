@@ -43,24 +43,22 @@ SMAPI 4.5.2 has no public API to run arbitrary commands (`ICommandHelper` only a
 
 The listener binds loopback only. Every request must carry the random 32-byte token, compared in constant time; the token exists only in the user-only state file. Anything that can read that file as your user could already run code as you.
 
-## Build
-
-Requires the .NET SDK 8 or later (output targets net6.0).
+## Quick start
 
 ```sh
-dotnet build -c Release   # fetches and sha256-verifies SMAPI 4.5.2's StardewModdingAPI.dll into lib/
-dotnet test -c Release
+dotnet build -c Release && dotnet test -c Release
 ```
 
-To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll"`.
-
-Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`.
+Prerequisites, the SMAPI dll override and install: [HUMANS.md](HUMANS.md).
 
 ## Documentation
 
 | Topic | Location |
 | --- | --- |
+| Build, test, install | [HUMANS.md](HUMANS.md) |
 | Rules for agents | [AGENTS.md](AGENTS.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Security policy | [SECURITY.md](SECURITY.md) |
 | Decided work not yet built | [docs/design.md](docs/design.md) |
 | Licence | [LICENSE](LICENSE) |
 

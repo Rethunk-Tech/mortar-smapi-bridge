@@ -1,6 +1,6 @@
 # Security policy
 
-This repository is private until its first release; the licence is in [`LICENSE`](LICENSE). The shipped artifact is a SMAPI mod that listens on loopback only and authenticates each command with a per-run token in a user-only state file.
+The licence is in [`LICENSE`](LICENSE). The shipped artifact is a SMAPI mod that listens on loopback only and authenticates each command with a per-run token in a user-only state file.
 
 ## Reporting a vulnerability
 

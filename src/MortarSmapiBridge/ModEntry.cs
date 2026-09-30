@@ -65,11 +65,14 @@ public sealed class ModEntry : Mod
         if (!config.OverlayEnabled)
             return;
 
-        // Constants.GameVersion is SMAPI's public API; SMAPI refuses reflection into its own types.
-        ISemanticVersion gameVersion = Constants.GameVersion;
-        if (!ApiRange.IsTestedGame(gameVersion.MajorVersion, gameVersion.MinorVersion, gameVersion.PatchVersion))
+        // SMAPI keeps Constants.GameVersion internal and refuses reflection into its own types, so the version comes
+        // from the game's Game1.version, which SMAPI lets a mod reflect on.
+        Type? game1 = GameType();
+        string? raw = game1 == null ? null : helper.Reflection.GetField<string>(game1, "version", false)?.GetValue();
+        if (raw == null || !SemanticVersion.TryParse(raw, out ISemanticVersion? gameVersion)
+            || !ApiRange.IsTestedGame(gameVersion.MajorVersion, gameVersion.MinorVersion, gameVersion.PatchVersion))
         {
-            this.Monitor.Log($"Stream overlay is disabled: Stardew Valley {gameVersion?.ToString() ?? "unknown"} is outside the verified range {ApiRange.TestedGame}.", LogLevel.Warn);
+            this.Monitor.Log($"Stream overlay is disabled: Stardew Valley {raw ?? "unknown"} is outside the verified range {ApiRange.TestedGame}.", LogLevel.Warn);
             return;
         }
 
@@ -117,11 +120,14 @@ public sealed class ModEntry : Mod
         }
     }
 
-    private static OverlaySnapshot? ReadOverlaySnapshot(IModHelper helper)
-    {
-        Type? game1 = AppDomain.CurrentDomain.GetAssemblies()
+    private static Type? GameType() =>
+        AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, "Stardew Valley", StringComparison.OrdinalIgnoreCase))
             ?.GetType("StardewValley.Game1");
+
+    private static OverlaySnapshot? ReadOverlaySnapshot(IModHelper helper)
+    {
+        Type? game1 = GameType();
         if (game1 == null)
             return null;
 

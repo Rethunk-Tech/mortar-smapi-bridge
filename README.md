@@ -1,4 +1,12 @@
-# Mortar SMAPI Bridge
+<h1 align="center">Mortar SMAPI Bridge</h1>
+
+<div align="center">
+
+![Licence](https://img.shields.io/badge/licence-AGPL--3.0-blue)
+
+</div>
+
+---
 
 A tiny SMAPI mod that lets the [Mortar](https://github.com/Rethunk-AI/mortar) mod manager send console commands to a running Stardew Valley. Mortar launches the game through Steam and only reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
 
@@ -47,6 +55,14 @@ dotnet test -c Release
 To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll"`.
 
 Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`.
+
+## Documentation
+
+| Topic | Location |
+| --- | --- |
+| Rules for agents | [AGENTS.md](AGENTS.md) |
+| Decided work not yet built | [docs/design.md](docs/design.md) |
+| Licence | [LICENSE](LICENSE) |
 
 ## License
 

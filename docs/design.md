@@ -7,7 +7,7 @@ Streamers want the game's live state in OBS overlays: the current location, the 
 - **Endpoint:** a read-only `GET /state` on the bridge's loopback listener returning that state as JSON, polled by an OBS browser source (a small example overlay page goes in this repo).
 - **Stable address:** OBS keeps a fixed URL, so overlay mode listens on a fixed, user-chosen port (opt-in, off by default), not the per-session port the command channel uses.
 - **Separate token:** a persistent read-only overlay token, separate from the per-session command token, so an overlay can never run console commands. Mortar shows the overlay URL and token with Copy buttons and can regenerate the token.
-- **Open question, decide before building:** reading game state needs Stardew Valley's own assemblies at compile time, which are proprietary and cannot be downloaded in CI, while the command bridge builds from SMAPI's LGPL `StardewModdingAPI.dll` alone. Options: build releases locally against the Steam install (CI builds and tests only the command part), or read state through SMAPI's reflection helpers so CI still builds from SMAPI's DLL (more fragile across game updates).
+- **Reading state:** through SMAPI's reflection helpers (NOMAD, 2026-09-30), so the mod still compiles against SMAPI's `StardewModdingAPI.dll` alone and CI builds and tests everything. Game field names can change in a game update, so the overlay pins the game versions it was verified against the way `ApiRange` pins SMAPI (`src/MortarSmapiBridge/ApiRange.cs`), and outside that range it stays off and logs a warning while the command channel keeps working.
 
 ### Where it lands
 
@@ -20,4 +20,5 @@ Streamers want the game's live state in OBS overlays: the current location, the 
 - With overlay mode off, no second port is open.
 - `GET /state` with the overlay token returns the fields above as JSON; a missing or wrong token returns 401 and the command token is rejected.
 - No overlay request can reach the command queue.
-- `dotnet build` and `dotnet test` pass in CI without Stardew Valley installed, or the open question is resolved with the CI split it names.
+- `dotnet build` and `dotnet test` pass in CI without Stardew Valley installed.
+- Outside the verified game version range the overlay listener does not start and SMAPI's log says why.

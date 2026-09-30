@@ -46,6 +46,22 @@ The command line is parsed quote-aware (double quotes group, backslash escapes) 
 
 SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection (`SCore.RawCommandQueue`). The mod only runs on the SMAPI minor version it was tested against (4.5.x); a newer one, or a renamed queue, disables the bridge with a logged message.
 
+## Stream overlay
+
+Overlay mode is off by default. Set `OverlayEnabled` to `true` in `config.json`, choose the fixed `OverlayPort`, and restart the game:
+
+```json
+{
+  "OverlayEnabled": true,
+  "OverlayPort": 8123,
+  "OverlayToken": "<generated on first enable>"
+}
+```
+
+The token is persistent, separate from the command token, and the config file is restricted to the current user. On the verified Stardew Valley 1.6.15 build, the loopback-only listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. Authenticate with `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. It returns location, player name, season, day, year, time of day, money, weather, health/max health, stamina/max stamina, and the six skill levels. The listener only serves this read-only endpoint; it has no path to the command queue.
+
+The snapshot is collected on SMAPI's game thread and the listener serves the last snapshot. If the game version is outside the verified range, the overlay stays off and logs a warning; the command channel remains available. A small OBS browser-source example is in [`examples/overlay/index.html`](examples/overlay/index.html). Open it with `?token=...&port=...`.
+
 ## Quick start
 
 ```sh
@@ -62,7 +78,7 @@ Prerequisites, the SMAPI dll override and install: [HUMANS.md](HUMANS.md). Gate:
 | Rules for agents | [AGENTS.md](AGENTS.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Security policy | [SECURITY.md](SECURITY.md) |
-| Decided work not yet built | [docs/design.md](docs/design.md) |
+| OBS overlay example | [examples/overlay/index.html](examples/overlay/index.html) |
 | Licence | [LICENSE](LICENSE) |
 
 ## Licence

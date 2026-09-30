@@ -1,8 +1,10 @@
 using System.Reflection;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 
 namespace MortarSmapiBridge;
 
@@ -11,6 +13,9 @@ public sealed class ModEntry : Mod
     private const string StateFileName = "mortar-smapi-bridge.json";
 
     private BridgeServer? Server;
+    private OverlayServer? Overlay;
+    private IModHelper? OverlayHelper;
+    private bool OverlayReadErrorLogged;
     private string? StatePath;
     private Action<string>? Enqueue;
 
@@ -37,6 +42,7 @@ public sealed class ModEntry : Mod
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
         WriteStateFile(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }));
         AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
+        this.StartOverlay(helper);
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }
 
@@ -53,8 +59,143 @@ public sealed class ModEntry : Mod
         return null;
     }
 
+    private void StartOverlay(IModHelper helper)
+    {
+        ModConfig config = helper.ReadConfig<ModConfig>();
+        if (!config.OverlayEnabled)
+            return;
+
+        ISemanticVersion? gameVersion;
+        try
+        {
+            gameVersion = helper.Reflection.GetProperty<ISemanticVersion>(typeof(Constants), "GameVersion", true).GetValue();
+        }
+        catch (Exception ex)
+        {
+            this.Monitor.Log($"Stream overlay is disabled because the game version could not be read: {ex.Message}", LogLevel.Warn);
+            return;
+        }
+
+        if (gameVersion == null || !ApiRange.IsTestedGame(gameVersion.MajorVersion, gameVersion.MinorVersion, gameVersion.PatchVersion))
+        {
+            this.Monitor.Log($"Stream overlay is disabled: Stardew Valley {gameVersion?.ToString() ?? "unknown"} is outside the verified range {ApiRange.TestedGame}.", LogLevel.Warn);
+            return;
+        }
+
+        if (!OverlayServer.IsValidPort(config.OverlayPort))
+        {
+            this.Monitor.Log($"Stream overlay is disabled: port {config.OverlayPort} is invalid.", LogLevel.Error);
+            return;
+        }
+
+        string overlayToken = EnsureOverlayToken(helper, config);
+        var overlay = new OverlayServer(config.OverlayPort, overlayToken);
+        try
+        {
+            overlay.Start();
+        }
+        catch (SocketException ex)
+        {
+            overlay.Dispose();
+            this.Monitor.Log($"Stream overlay is disabled: could not bind 127.0.0.1:{config.OverlayPort}: {ex.Message}", LogLevel.Error);
+            return;
+        }
+
+        this.Overlay = overlay;
+        this.OverlayHelper = helper;
+        helper.Events.GameLoop.OneSecondUpdateTicked += this.UpdateOverlayState;
+        this.Monitor.Log($"Stream overlay listening on 127.0.0.1:{overlay.Port}/state.", LogLevel.Info);
+    }
+
+    private void UpdateOverlayState(object? sender, OneSecondUpdateTickedEventArgs e)
+    {
+        if (this.Overlay == null || this.OverlayHelper == null)
+            return;
+
+        try
+        {
+            this.Overlay.SetSnapshot(ReadOverlaySnapshot(this.OverlayHelper));
+        }
+        catch (Exception ex)
+        {
+            if (!this.OverlayReadErrorLogged)
+            {
+                this.OverlayReadErrorLogged = true;
+                this.Monitor.Log($"Stream overlay state is unavailable: {ex.Message}", LogLevel.Error);
+            }
+        }
+    }
+
+    private static OverlaySnapshot? ReadOverlaySnapshot(IModHelper helper)
+    {
+        Type? game1 = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, "Stardew Valley", StringComparison.OrdinalIgnoreCase))
+            ?.GetType("StardewValley.Game1");
+        if (game1 == null)
+            return null;
+
+        object? player = helper.Reflection.GetProperty<object>(game1, "player", false)?.GetValue();
+        object? location = helper.Reflection.GetProperty<object>(game1, "currentLocation", false)?.GetValue();
+        if (player == null || location == null)
+            return null;
+
+        object? weather = helper.Reflection.GetMethod(location, "GetWeather", false)?.Invoke<object>([]);
+        string weatherName = weather == null
+            ? "unknown"
+            : helper.Reflection.GetProperty<string>(weather, "Weather", false)?.GetValue() ?? "unknown";
+        var skillLevels = new Dictionary<string, int>();
+        var getSkillLevel = helper.Reflection.GetMethod(player, "GetSkillLevel", true);
+        foreach ((string name, int index) in new[] { ("farming", 0), ("fishing", 1), ("foraging", 2), ("mining", 3), ("combat", 4), ("luck", 5) })
+            skillLevels[name] = getSkillLevel.Invoke<int>(index);
+
+        return new OverlaySnapshot(
+            helper.Reflection.GetProperty<string>(location, "Name", true).GetValue(),
+            helper.Reflection.GetProperty<string>(player, "Name", true).GetValue(),
+            helper.Reflection.GetProperty<string>(game1, "currentSeason", true).GetValue(),
+            helper.Reflection.GetField<int>(game1, "dayOfMonth", true).GetValue(),
+            helper.Reflection.GetField<int>(game1, "year", true).GetValue(),
+            helper.Reflection.GetField<int>(game1, "timeOfDay", true).GetValue(),
+            helper.Reflection.GetProperty<int>(player, "Money", true).GetValue(),
+            weatherName,
+            helper.Reflection.GetField<int>(player, "health", true).GetValue(),
+            helper.Reflection.GetField<int>(player, "maxHealth", true).GetValue(),
+            helper.Reflection.GetProperty<float>(player, "Stamina", true).GetValue(),
+            helper.Reflection.GetProperty<int>(player, "MaxStamina", true).GetValue(),
+            skillLevels);
+    }
+
+    private static string EnsureOverlayToken(IModHelper helper, ModConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.OverlayToken))
+        {
+            config.OverlayToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+            WriteConfigFile(helper, config);
+        }
+        else
+        {
+            RestrictFile(Path.Combine(helper.DirectoryPath, "config.json"));
+        }
+
+        return config.OverlayToken;
+    }
+
+    private static void WriteConfigFile(IModHelper helper, ModConfig config)
+    {
+        string path = Path.Combine(helper.DirectoryPath, "config.json");
+        if (!File.Exists(path))
+            File.WriteAllText(path, "");
+        RestrictFile(path);
+        helper.WriteConfig(config);
+        RestrictFile(path);
+    }
+
     private void Shutdown()
     {
+        if (this.OverlayHelper != null)
+            this.OverlayHelper.Events.GameLoop.OneSecondUpdateTicked -= this.UpdateOverlayState;
+        this.OverlayHelper = null;
+        this.Overlay?.Dispose();
+        this.Overlay = null;
         this.Server?.Dispose();
         this.Server = null;
         if (this.StatePath != null)
@@ -78,9 +219,14 @@ public sealed class ModEntry : Mod
     {
         // Create empty and restrict before writing so the secret is never readable by others.
         File.WriteAllText(path, "");
+        RestrictFile(path);
+        File.WriteAllText(path, json);
+    }
+
+    private static void RestrictFile(string path)
+    {
         if (!OperatingSystem.IsWindows() && chmod(path, 0x180) != 0)
             throw new IOException($"Could not restrict permissions on {path}.");
-        File.WriteAllText(path, json);
     }
 
     [DllImport("libc", SetLastError = true)]

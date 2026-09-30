@@ -1,0 +1,114 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
+using Xunit;
+
+namespace MortarSmapiBridge.Tests;
+
+public class OverlayTests
+{
+    [Theory]
+    [InlineData("overlay-token", "overlay-token", true)]
+    [InlineData("overlay-token", "command-token", false)]
+    [InlineData("overlay-token", "", false)]
+    [InlineData("overlay-token", null, false)]
+    public void OverlayTokenCheck(string expected, string? provided, bool matches) =>
+        Assert.Equal(matches, OverlayServer.TokenMatches(expected, provided));
+
+    [Fact]
+    public async Task MissingWrongAndCommandTokensReturn401()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+
+        Assert.Contains(" 401 ", await Request(port, "/state"));
+        Assert.Contains(" 401 ", await Request(port, "/state?token=wrong-token"));
+        Assert.Contains(" 401 ", await Request(port, "/state?token=command-token"));
+    }
+
+    [Fact]
+    public async Task BearerTokenReturnsSnapshotJson()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+
+        string response = await Request(port, "/state", "Authorization: Bearer overlay-token");
+        int bodyStart = response.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4;
+        using JsonDocument json = JsonDocument.Parse(response[bodyStart..]);
+        JsonElement root = json.RootElement;
+
+        Assert.Contains(" 200 ", response);
+        Assert.Equal("Farm", root.GetProperty("location").GetString());
+        Assert.Equal("Abigail", root.GetProperty("playerName").GetString());
+        Assert.Equal(7, root.GetProperty("day").GetInt32());
+        Assert.Equal(1250, root.GetProperty("money").GetInt32());
+        Assert.Equal(5, root.GetProperty("skills").GetProperty("farming").GetInt32());
+    }
+
+    [Fact]
+    public void GameVersionGateMatchesVerifiedBuildOnly()
+    {
+        Assert.True(ApiRange.IsTestedGame(1, 6, 15));
+        Assert.False(ApiRange.IsTestedGame(1, 6, 14));
+        Assert.False(ApiRange.IsTestedGame(1, 7, 0));
+    }
+
+    [Fact]
+    public void DisabledOverlayDoesNotOpenItsConfiguredPort()
+    {
+        var config = new ModConfig();
+        Assert.False(OverlayServer.ShouldStart(config, gameVersionTested: true));
+
+        int port = GetFreePort();
+        using var listener = new TcpListener(IPAddress.Loopback, port);
+        listener.Start();
+        Assert.True(listener.Server.IsBound);
+    }
+
+    private static OverlaySnapshot CreateSnapshot() =>
+        new(
+            "Farm",
+            "Abigail",
+            "spring",
+            7,
+            2,
+            930,
+            1250,
+            "sunny",
+            75,
+            100,
+            80,
+            270,
+            new Dictionary<string, int>
+            {
+                ["farming"] = 5,
+                ["fishing"] = 3,
+                ["foraging"] = 4,
+                ["mining"] = 2,
+                ["combat"] = 1,
+                ["luck"] = 0
+            });
+
+    private static int GetFreePort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+
+    private static async Task<string> Request(int port, string target, string? header = null)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, port);
+        await using NetworkStream stream = client.GetStream();
+        string request = $"GET {target} HTTP/1.1\r\nHost: 127.0.0.1\r\n{header}\r\n\r\n";
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(request));
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return await reader.ReadToEndAsync();
+    }
+}

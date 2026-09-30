@@ -15,6 +15,13 @@ To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/
 
 Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`.
 
+## Stream overlay
+
+The overlay is disabled by default. In the mod's `config.json`, set `OverlayEnabled` to `true` and choose a fixed `OverlayPort` between 1 and 65535. On first enable the mod generates `OverlayToken`, stores it in the config with the same user-only permissions as the state file, and listens only on `127.0.0.1`.
+
+The verified overlay game range is Stardew Valley `1.6.15`. `GET /state` accepts the overlay token as `Authorization: Bearer <token>` or `?token=<token>` and returns the latest game-thread snapshot. The command token is not accepted, and no overlay request can run a command. If the game version is outside the verified range, the overlay does not open its listener and the command channel still starts.
+
+For OBS, open `examples/overlay/index.html` as a browser source with `?token=<overlay token>&port=<overlay port>`. The page polls the loopback `/state` endpoint once per second.
 
 ## Versioning and release
 

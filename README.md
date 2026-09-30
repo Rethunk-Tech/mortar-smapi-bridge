@@ -15,7 +15,7 @@ Mortar installs and updates it automatically. Install it by hand only if you wan
 **Mortar SMAPI Bridge** lets the Mortar mod manager send SMAPI console commands to a running Stardew Valley, so Mortar can do things like reload or configure mods without you typing in the SMAPI console. It adds no gameplay and changes no game content.
 
 - **Install:** Mortar installs and updates it automatically. Install it by hand only if you want to drive SMAPI commands from your own tool: unzip into `Mods/`.
-- **Requires:** SMAPI 4.5.x and Stardew Valley 1.6.14 or later. On a newer SMAPI minor version the mod disables itself and logs a warning until it is updated.
+- **Requires:** SMAPI 4.5.x and Stardew Valley 1.6.14 or later. On a newer SMAPI minor version the mod disables itself and logs a warning.
 - **Safety:** it listens on `127.0.0.1` only (never the network, never the internet) and every request needs a random token stored in a file only your user can read. It makes no outgoing connections.
 - **Source and licence:** [github.com/Rethunk-AI/mortar-smapi-bridge](https://github.com/Rethunk-AI/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
 
@@ -64,11 +64,7 @@ The snapshot is collected on SMAPI's game thread and the listener serves the las
 
 ## Quick start
 
-```sh
-dotnet build -c Release && dotnet test -c Release
-```
-
-Prerequisites, the SMAPI dll override and install: [HUMANS.md](HUMANS.md). Gate: `gate` from the repo root.
+Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 
 ## Documentation
 

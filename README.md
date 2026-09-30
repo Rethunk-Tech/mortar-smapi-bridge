@@ -8,8 +8,6 @@
 
 A SMAPI mod that lets the [Mortar](https://github.com/Rethunk-AI/mortar) mod manager send console commands to a running Stardew Valley. Mortar launches the game through Steam and only reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
 
-Mortar installs and updates it automatically. Install it by hand only if you want to drive SMAPI commands from your own tool: unzip into `Mods/`.
-
 ## Nexus page description
 
 **Mortar SMAPI Bridge** lets the Mortar mod manager send SMAPI console commands to a running Stardew Valley, so Mortar can do things like reload or configure mods without you typing in the SMAPI console. It adds no gameplay and changes no game content.
@@ -48,7 +46,7 @@ SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds th
 
 ## Stream overlay
 
-Overlay mode is off by default. Set `OverlayEnabled` to `true` in `config.json`, choose the fixed `OverlayPort`, and restart the game:
+Overlay mode is off by default. Set `OverlayEnabled` to `true` in `config.json`, choose the fixed `OverlayPort` (the bridge accepts 1 to 65535; Mortar writes 1024 to 65535), and restart the game:
 
 ```json
 {

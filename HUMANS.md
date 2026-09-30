@@ -19,11 +19,7 @@ Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarS
 
 ## Stream overlay
 
-The overlay is disabled by default. In the mod's `config.json`, set `OverlayEnabled` to `true` and choose a fixed `OverlayPort` between 1 and 65535. On first enable the mod generates `OverlayToken`, stores it in the config with the same user-only permissions as the state file, and listens only on `127.0.0.1`.
-
-The verified overlay game range is Stardew Valley `1.6.15`. Protocol: [README.md](README.md#stream-overlay). If the game version is outside the verified range, the overlay does not open its listener and the command channel still starts.
-
-For OBS, open `examples/overlay/index.html` as a browser source with `?token=<overlay token>&port=<overlay port>`. The page polls the loopback `/state` endpoint once per second.
+What the overlay is, `config.json`, OverlayPort, and the HTTP contract: [README.md](README.md#stream-overlay).
 
 ## Versioning and release
 

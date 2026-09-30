@@ -15,7 +15,7 @@ public sealed class ModEntry : Mod
     private BridgeServer? Server;
     private OverlayServer? Overlay;
     private IModHelper? OverlayHelper;
-    private bool OverlayReadErrorLogged;
+    private readonly HashSet<string> OverlayReadErrors = [];
     private string? StatePath;
     private Action<string>? Enqueue;
 
@@ -106,17 +106,20 @@ public sealed class ModEntry : Mod
         if (this.Overlay == null || this.OverlayHelper == null)
             return;
 
+        if (!Context.IsWorldReady)
+        {
+            this.Overlay.SetNotInGame();
+            return;
+        }
+
         try
         {
             this.Overlay.SetSnapshot(ReadOverlaySnapshot(this.OverlayHelper));
         }
         catch (Exception ex)
         {
-            if (!this.OverlayReadErrorLogged)
-            {
-                this.OverlayReadErrorLogged = true;
+            if (OverlayServer.ShouldLogReadError(this.OverlayReadErrors, ex.Message))
                 this.Monitor.Log($"Stream overlay state is unavailable: {ex.Message}", LogLevel.Error);
-            }
         }
     }
 
@@ -151,6 +154,7 @@ public sealed class ModEntry : Mod
             skillLevels[name] = getSkillLevel.Invoke<int>(index);
 
         return new OverlaySnapshot(
+            true,
             helper.Reflection.GetProperty<string>(location, "Name", true).GetValue(),
             helper.Reflection.GetProperty<string>(player, "Name", true).GetValue(),
             StaticProperty<string>(game1, "currentSeason") ?? "unknown",

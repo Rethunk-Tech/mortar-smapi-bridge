@@ -15,7 +15,9 @@ internal sealed class OverlayServer : IDisposable
     private readonly TcpListener Listener;
     private readonly CancellationTokenSource Cts = new();
     private readonly string Token;
-    private OverlaySnapshot? snapshot;
+    internal const string NotInGameJson = "{\"inGame\":false}";
+
+    private string? snapshot;
 
     public OverlayServer(int port, string token)
     {
@@ -35,7 +37,12 @@ internal sealed class OverlayServer : IDisposable
     public static bool ShouldStart(ModConfig config, bool gameVersionTested) =>
         config.OverlayEnabled && gameVersionTested;
 
-    public void SetSnapshot(OverlaySnapshot? value) => Volatile.Write(ref this.snapshot, value);
+    public void SetNotInGame() => Volatile.Write(ref this.snapshot, NotInGameJson);
+
+    public void SetSnapshot(OverlaySnapshot? value) =>
+        Volatile.Write(ref this.snapshot, value == null ? null : Serialize(value));
+
+    internal static bool ShouldLogReadError(ISet<string> seen, string message) => seen.Add(message);
 
     public void Start()
     {
@@ -125,10 +132,10 @@ internal sealed class OverlayServer : IDisposable
         if (!TokenMatches(this.Token, GetToken(parts[1], headers)))
             return Response(401, "{\"error\":\"unauthorized\"}", "WWW-Authenticate: Bearer\r\n");
 
-        OverlaySnapshot? current = Volatile.Read(ref this.snapshot);
+        string? current = Volatile.Read(ref this.snapshot);
         return current == null
             ? Response(503, "{\"error\":\"state unavailable\"}")
-            : Response(200, Serialize(current));
+            : Response(200, current);
     }
 
     private static string? GetToken(string target, IReadOnlyDictionary<string, string> headers)

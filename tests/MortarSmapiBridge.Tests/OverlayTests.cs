@@ -43,11 +43,58 @@ public class OverlayTests
         JsonElement root = json.RootElement;
 
         Assert.Contains(" 200 ", response);
+        Assert.True(root.GetProperty("inGame").GetBoolean());
         Assert.Equal("Farm", root.GetProperty("location").GetString());
         Assert.Equal("Abigail", root.GetProperty("playerName").GetString());
         Assert.Equal(7, root.GetProperty("day").GetInt32());
         Assert.Equal(1250, root.GetProperty("money").GetInt32());
         Assert.Equal(5, root.GetProperty("skills").GetProperty("farming").GetInt32());
+    }
+
+    [Fact]
+    public async Task NotInGameReturns200WithInGameFalse()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetNotInGame();
+        server.Start();
+
+        string response = await Request(port, "/state?token=overlay-token");
+        int bodyStart = response.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4;
+        using JsonDocument json = JsonDocument.Parse(response[bodyStart..]);
+
+        Assert.Contains(" 200 ", response);
+        Assert.Equal("{\"inGame\":false}", response[bodyStart..]);
+        Assert.False(json.RootElement.GetProperty("inGame").GetBoolean());
+        Assert.Equal("inGame", Assert.Single(json.RootElement.EnumerateObject()).Name);
+    }
+
+    [Fact]
+    public void InGameSnapshotJsonShape()
+    {
+        using JsonDocument json = JsonDocument.Parse(OverlayServer.Serialize(CreateSnapshot()));
+        JsonElement root = json.RootElement;
+        Assert.True(root.GetProperty("inGame").GetBoolean());
+        Assert.Equal(
+            new[]
+            {
+                "inGame", "location", "playerName", "season", "day", "year", "timeOfDay", "money", "weather",
+                "health", "maxHealth", "stamina", "maxStamina", "skills"
+            },
+            root.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.Equal(
+            new[] { "farming", "fishing", "foraging", "mining", "combat", "luck" },
+            root.GetProperty("skills").EnumerateObject().Select(p => p.Name).ToArray());
+    }
+
+    [Fact]
+    public void OverlayReadErrorIsLoggedOncePerMessage()
+    {
+        var seen = new HashSet<string>();
+        Assert.True(OverlayServer.ShouldLogReadError(seen, "missing player"));
+        Assert.False(OverlayServer.ShouldLogReadError(seen, "missing player"));
+        Assert.True(OverlayServer.ShouldLogReadError(seen, "missing location"));
+        Assert.False(OverlayServer.ShouldLogReadError(seen, "missing location"));
     }
 
     [Fact]
@@ -72,6 +119,7 @@ public class OverlayTests
 
     private static OverlaySnapshot CreateSnapshot() =>
         new(
+            true,
             "Farm",
             "Abigail",
             "spring",

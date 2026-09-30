@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace MortarSmapiBridge;
 
 internal sealed record OverlaySnapshot(
+    [property: JsonPropertyName("inGame")] bool InGame,
     [property: JsonPropertyName("location")] string Location,
     [property: JsonPropertyName("playerName")] string PlayerName,
     [property: JsonPropertyName("season")] string Season,

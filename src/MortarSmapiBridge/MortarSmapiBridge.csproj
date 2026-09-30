@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <SmapiDll Condition="'$(SmapiDll)' == ''">$(MSBuildThisFileDirectory)../../lib/StardewModdingAPI.dll</SmapiDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="StardewModdingAPI" HintPath="$(SmapiDll)" Private="false" />
+    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <InternalsVisibleTo Include="MortarSmapiBridge.Tests" />
+  </ItemGroup>
+
+  <Target Name="FetchSmapi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SmapiDll)')">
+    <Exec Command="bash &quot;$(MSBuildThisFileDirectory)../../scripts/fetch-smapi.sh&quot;" />
+  </Target>
+</Project>

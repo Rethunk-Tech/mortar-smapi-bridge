@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MortarSmapiBridge/MortarSmapiBridge.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MortarSmapiBridge.Tests/MortarSmapiBridge.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -65,18 +65,9 @@ public sealed class ModEntry : Mod
         if (!config.OverlayEnabled)
             return;
 
-        ISemanticVersion? gameVersion;
-        try
-        {
-            gameVersion = helper.Reflection.GetProperty<ISemanticVersion>(typeof(Constants), "GameVersion", true).GetValue();
-        }
-        catch (Exception ex)
-        {
-            this.Monitor.Log($"Stream overlay is disabled because the game version could not be read: {ex.Message}", LogLevel.Warn);
-            return;
-        }
-
-        if (gameVersion == null || !ApiRange.IsTestedGame(gameVersion.MajorVersion, gameVersion.MinorVersion, gameVersion.PatchVersion))
+        // Constants.GameVersion is SMAPI's public API; SMAPI refuses reflection into its own types.
+        ISemanticVersion gameVersion = Constants.GameVersion;
+        if (!ApiRange.IsTestedGame(gameVersion.MajorVersion, gameVersion.MinorVersion, gameVersion.PatchVersion))
         {
             this.Monitor.Log($"Stream overlay is disabled: Stardew Valley {gameVersion?.ToString() ?? "unknown"} is outside the verified range {ApiRange.TestedGame}.", LogLevel.Warn);
             return;

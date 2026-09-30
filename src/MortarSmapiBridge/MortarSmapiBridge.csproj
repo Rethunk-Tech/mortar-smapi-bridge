@@ -1,21 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <Version>1.0.1</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <SmapiDll Condition="'$(SmapiDll)' == ''">$(MSBuildThisFileDirectory)../../lib/StardewModdingAPI.dll</SmapiDll>
+    <SmapiCoreInterfacesDll Condition="'$(SmapiCoreInterfacesDll)' == ''">$(MSBuildThisFileDirectory)../../lib/SMAPI.Toolkit.CoreInterfaces.dll</SmapiCoreInterfacesDll>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="StardewModdingAPI" HintPath="$(SmapiDll)" Private="false" />
-    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Reference Include="SMAPI.Toolkit.CoreInterfaces" HintPath="$(SmapiCoreInterfacesDll)" Private="false" />
     <InternalsVisibleTo Include="MortarSmapiBridge.Tests" />
   </ItemGroup>
 
-  <Target Name="FetchSmapi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SmapiDll)')">
+  <Target Name="FetchSmapi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SmapiDll)') Or !Exists('$(SmapiCoreInterfacesDll)')">
     <Exec Command="bash &quot;$(MSBuildThisFileDirectory)../../scripts/fetch-smapi.sh&quot;" />
+  </Target>
+
+  <!-- The csproj Version is the only place the version is written; the shipped manifest.json is generated from it. -->
+  <Target Name="GenerateManifest" AfterTargets="Build" Inputs="manifest.template.json;$(MSBuildProjectFile)" Outputs="$(OutDir)manifest.json">
+    <WriteLinesToFile File="$(OutDir)manifest.json" Lines="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/manifest.template.json').Replace('@VERSION@', '$(Version)'))" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
 </Project>

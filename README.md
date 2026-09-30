@@ -12,6 +12,15 @@ A tiny SMAPI mod that lets the [Mortar](https://github.com/Rethunk-AI/mortar) mo
 
 Mortar installs it automatically. You do not need it otherwise.
 
+## Nexus page description
+
+**Mortar SMAPI Bridge** lets the Mortar mod manager send SMAPI console commands to a running Stardew Valley, so Mortar can do things like reload or configure mods without you typing in the SMAPI console. It adds no gameplay and changes no game content.
+
+- **Install:** Mortar installs and updates it automatically. Install it by hand only if you want to drive SMAPI commands from your own tool: unzip into `Mods/`.
+- **Requires:** SMAPI 4.5.x and Stardew Valley 1.6.14 or later. On a newer SMAPI minor version the mod disables itself and logs a warning until it is updated.
+- **Safety:** it listens on `127.0.0.1` only (never the network, never the internet) and every request needs a random token stored in a file only your user can read. It makes no outgoing connections.
+- **Source and licence:** [github.com/Rethunk-AI/mortar-smapi-bridge](https://github.com/Rethunk-AI/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
+
 ## How it works
 
 On launch the mod listens on `127.0.0.1` (port chosen by the OS) and writes `mortar-smapi-bridge.json` in its own folder:
@@ -37,7 +46,7 @@ The mod replies with one line and closes: `ok` or `error: <message>`.
 - `ok` means the command was queued. It runs on the game's next update tick exactly as if typed in the SMAPI console (built-ins like `help`, other mods' commands, `screen=N`), and its output appears in the SMAPI log. An unknown command is reported there, not in the reply.
 - Each received command is logged at Trace level.
 
-SMAPI 4.5.2 has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection. A future SMAPI that renames it disables the bridge with a logged error.
+SMAPI 4.5.2 has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection. The mod only runs on the SMAPI minor version it was tested against (4.5.x); a newer one, or a renamed queue, disables the bridge with a logged message.
 
 ## Security
 

@@ -16,6 +16,13 @@ public sealed class ModEntry : Mod
 
     public override void Entry(IModHelper helper)
     {
+        ISemanticVersion api = Constants.ApiVersion;
+        if (!ApiRange.IsTested(api.MajorVersion, api.MinorVersion))
+        {
+            this.Monitor.Log($"Mortar SMAPI Bridge {this.ModManifest.Version} is tested on SMAPI {ApiRange.Tested}, but SMAPI {api} is running, so console commands from Mortar are off until the bridge is updated.", LogLevel.Warn);
+            return;
+        }
+
         this.Enqueue = ResolveRawCommandQueue();
         if (this.Enqueue == null)
         {

@@ -11,6 +11,8 @@ dotnet build -c Release   # fetches and sha256-verifies SMAPI 4.5.2's StardewMod
 dotnet test -c Release
 ```
 
+The SMAPI version and its file hashes are pinned in `scripts/fetch-smapi.sh`, which the build runs when `lib/` is empty; a SMAPI bump changes them there.
+
 `gate` from the repo root is the offline gate.
 
 To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll" -p:SmapiCoreInterfacesDll="/path/to/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll"`.

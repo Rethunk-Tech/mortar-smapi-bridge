@@ -15,11 +15,7 @@ dotnet test -c Release
 
 To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll" -p:SmapiCoreInterfacesDll="/path/to/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll"`.
 
-Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`.
-
-## Stream overlay
-
-What the overlay is, `config.json`, OverlayPort, and the HTTP contract: [README.md](README.md#stream-overlay).
+Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`. Overlay `config.json` and HTTP contract: [README.md](README.md#stream-overlay).
 
 ## Versioning and release
 

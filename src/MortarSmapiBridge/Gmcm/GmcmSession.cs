@@ -84,8 +84,8 @@ internal sealed class GmcmSession
         if (_disabled)
             return;
 
-        string pendingDir = PendingDir();
-        if (!Directory.Exists(pendingDir))
+        string? pendingDir = PendingDir();
+        if (pendingDir == null || !Directory.Exists(pendingDir))
             return;
 
         if (!TryGetConfigManager(out object? manager, out string? gmcmVersion) || manager == null)
@@ -121,7 +121,9 @@ internal sealed class GmcmSession
         if (!TryGetConfigManager(out object? manager, out string? gmcmVersion) || manager == null)
             return;
 
-        string gmcmDir = CaptureDir();
+        string? gmcmDir = CaptureDir();
+        if (gmcmDir == null)
+            return;
         Directory.CreateDirectory(gmcmDir);
         DateTimeOffset capturedAt = DateTimeOffset.UtcNow;
         GmcmIndexFile index = new()
@@ -296,17 +298,21 @@ internal sealed class GmcmSession
             LogLevel.Warn);
     }
 
-    private string ProfileDir()
+    // Mortar installs the bridge at <profile>/mods/<entry key>/MortarSmapiBridge, so the profile is the nearest
+    // ancestor holding profile.json; without one the game was not started by Mortar and nothing is written.
+    private string? ProfileDir()
     {
-        // Mods/<this mod> → Mods → profile (SMAPI --mods-path parent). Constants.ModsPath is not on the SMAPI surface we compile against.
-        string? mods = Directory.GetParent(_helper.DirectoryPath)?.FullName;
-        string? profile = mods == null ? null : Directory.GetParent(mods)?.FullName;
-        return profile ?? _helper.DirectoryPath;
+        for (DirectoryInfo? dir = Directory.GetParent(_helper.DirectoryPath); dir != null; dir = dir.Parent)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "profile.json")))
+                return dir.FullName;
+        }
+        return null;
     }
 
-    private string CaptureDir() => Path.Combine(ProfileDir(), "gmcm");
+    private string? CaptureDir() => ProfileDir() is { } dir ? Path.Combine(dir, "gmcm") : null;
 
-    private string PendingDir() => Path.Combine(ProfileDir(), "gmcm-pending");
+    private string? PendingDir() => ProfileDir() is { } dir ? Path.Combine(dir, "gmcm-pending") : null;
 
     internal static string SafeFileName(string uniqueId)
     {

@@ -21,6 +21,7 @@ public sealed class ModEntry : Mod
 
     public override void Entry(IModHelper helper)
     {
+        new MortarSmapiBridge.Gmcm.GmcmSession(helper, this.Monitor, helper.ReadConfig<ModConfig>()).Attach();
         ISemanticVersion api = Constants.ApiVersion;
         if (!ApiRange.IsTested(api.MajorVersion, api.MinorVersion))
         {

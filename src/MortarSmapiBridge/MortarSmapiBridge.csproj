@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Version>1.1.1</Version>
+    <Version>1.2.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -25,4 +25,7 @@
   <Target Name="GenerateManifest" AfterTargets="Build" Inputs="manifest.template.json;$(MSBuildProjectFile)" Outputs="$(OutDir)manifest.json">
     <WriteLinesToFile File="$(OutDir)manifest.json" Lines="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/manifest.template.json').Replace('@VERSION@', '$(Version)'))" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MortarSmapiBridge.Tests" />
+  </ItemGroup>
 </Project>

@@ -25,6 +25,8 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
 - Command channel runs only on SMAPI 4.5.x; overlay runs only on Stardew Valley 1.6.15
 
+GMCM menu capture (profile dir = parent of SMAPI `--mods-path` / `Constants.ModsPath`): `gmcm/<UniqueID>.json` per mod, written atomically, `{schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault, pages: [{id, title, options: [{index, kind, fieldId, name, tooltip, value, min, max, interval, choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}` (`fieldId` omitted when it looks like a GUID); `gmcm/_index.json` lists captured mods and the GMCM version. Capture runs on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`. Apply reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}` on that first title-screen tick before capture; match by `fieldId` when it is not a GUID, else `(page, index, kind, name)`; then every option `BeforeSave` → `ModConfig.Save` → `AfterSave`. Writes `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}` and deletes the pending file only after a successful save. Unregistered mods and failed matches are skipped with reasons. Set `GmcmEnabled` to `false` in `config.json` to turn this off.
+
 ## Nexus page description
 
 **Mortar SMAPI Bridge** lets the Mortar mod manager send SMAPI console commands to a running Stardew Valley, so Mortar can do things like reload or configure mods without you typing in the SMAPI console. It adds no gameplay and changes no game content.

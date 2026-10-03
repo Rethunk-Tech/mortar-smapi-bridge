@@ -23,7 +23,7 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - Loopback TCP command channel: one connection per SMAPI console line, authenticated with a per-run token
 - Writes `mortar-smapi-bridge.json` (`port`, `token`, `pid`) in the mod folder and deletes it on exit
 - Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
-- Command channel runs only on SMAPI 4.5.x; overlay runs only on Stardew Valley 1.6.15
+- Command channel runs on SMAPI 4.5 and later 4.x; overlay runs only on Stardew Valley 1.6.15
 
 GMCM menu capture (profile dir = parent of SMAPI `--mods-path` / `Constants.ModsPath`): `gmcm/<UniqueID>.json` per mod, written atomically, `{schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault, pages: [{id, title, options: [{index, kind, fieldId, name, tooltip, value, min, max, interval, choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}` (`fieldId` omitted when it looks like a GUID); `gmcm/_index.json` lists captured mods and the GMCM version. Capture runs on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`. Apply reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}` on that first title-screen tick before capture; match by `fieldId` when it is not a GUID, else `(page, index, kind, name)`; then every option `BeforeSave` → `ModConfig.Save` → `AfterSave`. Writes `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}` and deletes the pending file only after a successful save. Unregistered mods and failed matches are skipped with reasons. Set `GmcmEnabled` to `false` in `config.json` to turn this off.
 
@@ -32,7 +32,7 @@ GMCM menu capture (profile dir = parent of SMAPI `--mods-path` / `Constants.Mods
 **Mortar SMAPI Bridge** lets the Mortar mod manager send SMAPI console commands to a running Stardew Valley, so Mortar can do things like reload or configure mods without you typing in the SMAPI console. It adds no gameplay and changes no game content.
 
 - **Install:** Mortar installs and updates it automatically. Install it by hand only if you want to drive SMAPI commands from your own tool: unzip into `Mods/`.
-- **Requires:** SMAPI 4.5.x and Stardew Valley 1.6.14 or later (`MinimumGameVersion`). On a newer SMAPI minor version the mod disables itself and logs a warning. Stream overlay is verified on Stardew Valley 1.6.15 only; on any other game version it stays off.
+- **Requires:** SMAPI 4.5 or a later 4.x and Stardew Valley 1.6.14 or later (`MinimumGameVersion`). On SMAPI 5, or a 4.x whose internal console queue moved, the command channel stays off and logs a warning. Stream overlay is verified on Stardew Valley 1.6.15 only; on any other game version it stays off.
 - **Safety:** it listens on `127.0.0.1` only (never the network, never the internet) and every request needs a random token stored in a file only your user can read. It makes no outgoing connections.
 - **Source and licence:** [github.com/Rethunk-AI/mortar-smapi-bridge](https://github.com/Rethunk-AI/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
 
@@ -61,7 +61,7 @@ The command line is parsed quote-aware (double quotes group, backslash escapes) 
 
 `ok` means the command was queued. It runs on the game's next update tick exactly as if typed in the SMAPI console (built-ins like `help`, other mods' commands, `screen=N`), and its output appears in the SMAPI log. An unknown command is reported there, not in the reply. Each received command is logged at Trace level.
 
-SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection (`SCore.RawCommandQueue`). The mod only runs on the SMAPI minor version it was tested against (4.5.x); a newer one, or a renamed queue, disables the bridge with a logged message.
+SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection (`SCore.RawCommandQueue`). The command channel runs on SMAPI 4 from 4.5, where the lookup was verified; SMAPI 5, or a renamed queue in a later 4.x, turns it off with a logged message.
 
 ## Stream overlay
 

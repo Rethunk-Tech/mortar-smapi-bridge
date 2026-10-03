@@ -205,6 +205,15 @@ internal sealed class GmcmSession
             return;
         }
 
+        if (pending.Schema != GmcmSchema.Current)
+        {
+            GmcmPendingResultFile unsupported = new();
+            foreach (GmcmPendingEdit edit in pending.Edits)
+                unsupported.Skipped.Add(new GmcmSkippedEdit { Edit = edit, Reason = $"pending file schema {pending.Schema} is not supported; update the bridge" });
+            WriteResult(pendingPath, unsupported);
+            return;
+        }
+
         if (!configs.TryGetValue(uniqueId, out object? modConfig))
         {
             GmcmPendingResultFile missing = new();

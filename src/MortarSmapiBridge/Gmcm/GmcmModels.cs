@@ -109,6 +109,12 @@ internal sealed class GmcmFormatSample
     public string Label { get; set; } = "";
 }
 
+/// <summary>The one file-format version the bridge and Mortar exchange; either side refuses any other.</summary>
+internal static class GmcmSchema
+{
+    public const int Current = 1;
+}
+
 internal sealed class GmcmIndexFile
 {
     [JsonPropertyName("schema")]

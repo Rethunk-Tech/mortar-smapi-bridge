@@ -1,0 +1,6 @@
+<Project>
+  <!-- packages.lock.json pins what the floating test-package versions resolved to; CI restores with locked-mode so a new upstream release cannot change a build without a lockfile commit. -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>

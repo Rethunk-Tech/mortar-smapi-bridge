@@ -13,7 +13,7 @@ dotnet test -c Release
 
 The SMAPI version and its file hashes are pinned in `scripts/fetch-smapi.sh`, which the build runs when `lib/` is empty; a SMAPI bump changes them there.
 
-`gate` from the repo root is the offline gate. `lefthook install` sets up the git hooks (needs `lefthook` and `gitleaks` on PATH): pre-commit scans staged changes for secrets, pre-push builds and tests.
+`gate` from the repo root is the offline gate. `lefthook install` sets up the git hooks (needs `lefthook` and `gitleaks` on PATH): pre-commit scans staged changes for secrets, pre-push runs `gate`.
 
 To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll" -p:SmapiCoreInterfacesDll="/path/to/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" -p:HarmonyDll="/path/to/smapi-internal/0Harmony.dll"`. The fetch is skipped when the first two exist, so all three must be passed.
 

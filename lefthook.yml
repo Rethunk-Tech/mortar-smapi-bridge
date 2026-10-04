@@ -5,4 +5,4 @@ pre-commit:
 pre-push:
   jobs:
     - name: gate
-      run: dotnet build -c Release && dotnet test -c Release --no-build
+      run: gate

@@ -9,7 +9,8 @@ internal static class StartupClock
 {
     internal sealed class Frame(string mod, string kind, string? pack, Frame? parent)
     {
-        internal readonly string Mod = mod;
+        // Entry timing learns whose time a frame was only when it ends.
+        internal string Mod = mod;
         internal readonly string Kind = kind;
         internal readonly string? Pack = pack;
         internal readonly Frame? Parent = parent;
@@ -50,6 +51,13 @@ internal static class StartupClock
             frame.Parent.Children += total;
         long own = Math.Max(0, total - frame.Children);
         ticks.AddOrUpdate(new Key(frame.Mod, frame.Kind, frame.Pack), own, (_, old) => old + own);
+    }
+
+    /// <summary>Leaves a frame without counting it.</summary>
+    internal static void Discard(Frame? frame)
+    {
+        if (frame != null && current == frame)
+            current = frame.Parent;
     }
 
     internal static IReadOnlyDictionary<Key, long> Snapshot() => new Dictionary<Key, long>(ticks);

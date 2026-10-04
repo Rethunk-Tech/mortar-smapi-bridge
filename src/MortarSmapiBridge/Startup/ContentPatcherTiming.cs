@@ -53,6 +53,12 @@ internal static class ContentPatcherTiming
 
     private static void Prefix(object __instance, object[] __args, out StartupClock.Frame? __state)
     {
+        // The patches stay after the title screen (unpatching blocks the game for seconds), so this must be cheap.
+        if (!StartupClock.On)
+        {
+            __state = null;
+            return;
+        }
         string? pack = PackId(__instance) ?? __args.Select(PackId).FirstOrDefault(id => id != null);
         __state = pack == null ? null : StartupClock.Begin(Id, "load", pack);
     }

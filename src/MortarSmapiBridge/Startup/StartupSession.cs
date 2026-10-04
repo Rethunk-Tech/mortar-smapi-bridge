@@ -69,14 +69,27 @@ internal sealed class StartupSession
         if (profile)
         {
             HashSet<string> ran = new(StringComparer.OrdinalIgnoreCase);
+            IModInfo? own = null;
             foreach (IModInfo mod in this.helper.ModRegistry.GetAll())
             {
                 if (string.Equals(mod.Manifest.UniqueID, this.ownId, StringComparison.OrdinalIgnoreCase))
+                {
+                    own = mod;
                     break;
-                ran.Add(mod.Manifest.UniqueID);
+                }
+                if (!mod.IsContentPack)
+                    ran.Add(mod.Manifest.UniqueID);
             }
-            this.entryMissed = EntryTiming.Patch(this.harmony, this.helper.ModRegistry.GetAll(), this.ownId, ran);
-            this.entryTimed = true;
+            this.entryMissed = own == null ? -1 : EntryTiming.Patch(this.harmony, own, ran);
+            if (this.entryMissed < 0)
+            {
+                this.monitor.Log("Startup timing: SMAPI's mod metadata has an unexpected shape; Entry times are off.", LogLevel.Trace);
+                this.entryMissed = 0;
+            }
+            else
+            {
+                this.entryTimed = true;
+            }
         }
         this.helper.Events.Content.AssetRequested += this.OnAssetRequested;
         this.helper.Events.Content.AssetRequested += this.OnAssetRequestedLast;
@@ -99,6 +112,7 @@ internal sealed class StartupSession
         this.Guard(() =>
         {
             this.phases.GameLaunched = this.Now();
+            EntryTiming.Close();
             this.phases.EntryDone = EntryTiming.LastEntryEnd > 0 ? this.FromTimestamp(EntryTiming.LastEntryEnd) : 0;
             this.events?.WrapNew();
         });
@@ -172,8 +186,9 @@ internal sealed class StartupSession
 
     private void Unhook()
     {
+        // Harmony patches stay: once the clock stops they do nothing, while UnpatchAll regenerates every patched method
+        // and froze the title screen for about 4 s on a 400-mod profile.
         this.events?.Restore();
-        this.harmony.UnpatchAll(this.harmony.Id);
         this.helper.Events.Content.AssetRequested -= this.OnAssetRequested;
         this.helper.Events.Content.AssetRequested -= this.OnAssetRequestedLast;
         this.helper.Events.GameLoop.GameLaunched -= this.OnGameLaunched;

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using MortarSmapiBridge.Startup;
 
 namespace MortarSmapiBridge;
 
@@ -21,7 +22,10 @@ public sealed class ModEntry : Mod
 
     public override void Entry(IModHelper helper)
     {
-        new MortarSmapiBridge.Gmcm.GmcmSession(helper, this.Monitor, helper.ReadConfig<ModConfig>()).Attach();
+        // First, so that with the bridge loaded early every other mod's Entry and handlers are measured.
+        ModConfig config = helper.ReadConfig<ModConfig>();
+        StartupSession.Start(helper, this.Monitor, this.ModManifest, config);
+        new MortarSmapiBridge.Gmcm.GmcmSession(helper, this.Monitor, config).Attach();
         AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
         // The overlay only reads game state, so it has its own game-version gate and does not depend on the command
         // channel's SMAPI checks below.
@@ -131,7 +135,7 @@ public sealed class ModEntry : Mod
         (T?)(type.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new MissingMemberException(type.FullName, name)).GetValue(null);
 
-    private static Type? GameType() =>
+    internal static Type? GameType() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, "Stardew Valley", StringComparison.OrdinalIgnoreCase))
             ?.GetType("StardewValley.Game1");

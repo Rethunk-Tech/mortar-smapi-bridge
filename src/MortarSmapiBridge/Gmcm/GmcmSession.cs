@@ -309,15 +309,7 @@ internal sealed class GmcmSession
 
     // Mortar installs the bridge at <profile>/mods/<entry key>/MortarSmapiBridge, so the profile is the nearest
     // ancestor holding profile.json; without one the game was not started by Mortar and nothing is written.
-    private string? ProfileDir()
-    {
-        for (DirectoryInfo? dir = Directory.GetParent(_helper.DirectoryPath); dir != null; dir = dir.Parent)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "profile.json")))
-                return dir.FullName;
-        }
-        return null;
-    }
+    private string? ProfileDir() => MortarSmapiBridge.Startup.ProfileDirectory.Find(_helper.DirectoryPath);
 
     private string? CaptureDir() => ProfileDir() is { } dir ? Path.Combine(dir, "gmcm") : null;
 

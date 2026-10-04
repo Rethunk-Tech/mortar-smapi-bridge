@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using MortarSmapiBridge.Gmcm;
 using MortarSmapiBridge.Startup;
 
 namespace MortarSmapiBridge;
@@ -25,7 +26,7 @@ public sealed class ModEntry : Mod
         // First, so that with the bridge loaded early every other mod's Entry and handlers are measured.
         ModConfig config = helper.ReadConfig<ModConfig>();
         StartupSession.Start(helper, this.Monitor, this.ModManifest, config);
-        new MortarSmapiBridge.Gmcm.GmcmSession(helper, this.Monitor, config).Attach();
+        new GmcmSession(helper, this.Monitor, config).Attach();
         AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
         // The overlay only reads game state, so it has its own game-version gate and does not depend on the command
         // channel's SMAPI checks below.
@@ -49,7 +50,7 @@ public sealed class ModEntry : Mod
         this.Server.Start();
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
-        WriteStateFile(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }));
+        GmcmSession.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }), RestrictFile);
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }
 
@@ -226,14 +227,6 @@ public sealed class ModEntry : Mod
         object? queue = core?.GetField("RawCommandQueue", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(instance);
         MethodInfo? add = queue?.GetType().GetMethod("Add", [typeof(string)]);
         return add == null ? null : line => add.Invoke(queue, [line]);
-    }
-
-    private static void WriteStateFile(string path, string json)
-    {
-        // Create empty and restrict before writing so the secret is never readable by others.
-        File.WriteAllText(path, "");
-        RestrictFile(path);
-        File.WriteAllText(path, json);
     }
 
     private static void RestrictFile(string path)

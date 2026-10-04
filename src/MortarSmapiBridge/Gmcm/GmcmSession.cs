@@ -328,9 +328,15 @@ internal sealed class GmcmSession
         return new string(buffer);
     }
 
-    internal static void AtomicWrite(string path, string contents)
+    // restrict runs on the still-empty temp file, so its contents are never readable by others.
+    internal static void AtomicWrite(string path, string contents, Action<string>? restrict = null)
     {
         string temp = path + ".tmp";
+        if (restrict != null)
+        {
+            File.WriteAllText(temp, "");
+            restrict(temp);
+        }
         File.WriteAllText(temp, contents);
         File.Move(temp, path, overwrite: true);
     }

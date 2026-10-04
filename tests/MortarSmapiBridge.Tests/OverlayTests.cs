@@ -88,10 +88,12 @@ public class OverlayTests
     }
 
     [Fact]
-    public void GameVersionGateMatchesVerifiedBuildOnly()
+    public void GameVersionGateMatchesManifestRange()
     {
         Assert.True(ApiRange.IsTestedGame(1, 6, 15));
-        Assert.False(ApiRange.IsTestedGame(1, 6, 14));
+        Assert.True(ApiRange.IsTestedGame(1, 6, 14));
+        Assert.True(ApiRange.IsTestedGame(1, 6, 16));
+        Assert.False(ApiRange.IsTestedGame(1, 6, 13));
         Assert.False(ApiRange.IsTestedGame(1, 7, 0));
     }
 

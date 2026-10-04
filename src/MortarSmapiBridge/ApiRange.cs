@@ -9,11 +9,11 @@ internal static class ApiRange
     public const string Tested = "4.5 or a later 4.x";
     public const int TestedGameMajor = 1;
     public const int TestedGameMinor = 6;
-    public const int TestedGamePatch = 15;
-    public const string TestedGame = "1.6.15";
+    public const int TestedGameMinPatch = 14;
+    public const string TestedGame = "1.6.14 or a later 1.6.x";
 
     public static bool IsTested(int major, int minor) => major == TestedMajor && minor >= TestedMinor;
 
     public static bool IsTestedGame(int major, int minor, int patch) =>
-        major == TestedGameMajor && minor == TestedGameMinor && patch == TestedGamePatch;
+        major == TestedGameMajor && minor == TestedGameMinor && patch >= TestedGameMinPatch;
 }

@@ -27,6 +27,4 @@
   <Target Name="GenerateManifest" AfterTargets="Build" Inputs="manifest.template.json;$(MSBuildProjectFile)" Outputs="$(OutDir)manifest.json">
     <WriteLinesToFile File="$(OutDir)manifest.json" Lines="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/manifest.template.json').Replace('@VERSION@', '$(Version)'))" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
-  <ItemGroup>
-  </ItemGroup>
 </Project>

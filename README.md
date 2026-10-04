@@ -8,7 +8,7 @@
 
 ---
 
-A SMAPI mod that lets the [Mortar](https://github.com/Rethunk-AI/mortar) mod manager send console commands to a running Stardew Valley. Mortar starts the game through its launcher (Steam, GOG, Heroic or Lutris) and reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
+A SMAPI mod that lets the [Mortar](https://github.com/Rethunk-Tech/mortar) mod manager send console commands to a running Stardew Valley. Mortar starts the game through its launcher (Steam, GOG, Heroic or Lutris) and reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
 
 ## Quick start
 
@@ -36,7 +36,7 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - **Install:** Mortar installs and updates it automatically. Install it by hand only if you want to drive SMAPI commands from your own tool: unzip into `Mods/`.
 - **Requires:** SMAPI 4.5.2 or a later 4.x and Stardew Valley 1.6.14 or later (`MinimumGameVersion`). On SMAPI 5, or a 4.x whose internal console queue moved, the command channel stays off and logs a warning. Stream overlay runs on Stardew Valley 1.6.14 up to, but not including, 1.7; on any other game version it stays off.
 - **Safety:** it listens on `127.0.0.1` only (never the network, never the internet) and every request needs a random token stored in a file only your user can read. It makes no outgoing connections.
-- **Source and licence:** [github.com/Rethunk-AI/mortar-smapi-bridge](https://github.com/Rethunk-AI/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
+- **Source and licence:** [github.com/Rethunk-Tech/mortar-smapi-bridge](https://github.com/Rethunk-Tech/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
 
 ## How it works
 

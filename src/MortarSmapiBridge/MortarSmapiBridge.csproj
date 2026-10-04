@@ -28,6 +28,5 @@
     <WriteLinesToFile File="$(OutDir)manifest.json" Lines="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/manifest.template.json').Replace('@VERSION@', '$(Version)'))" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
   <ItemGroup>
-    <InternalsVisibleTo Include="MortarSmapiBridge.Tests" />
   </ItemGroup>
 </Project>

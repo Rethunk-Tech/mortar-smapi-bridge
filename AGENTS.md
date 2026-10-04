@@ -5,6 +5,7 @@ C# SMAPI mod (net6.0) that lets Mortar send console commands. Compiles against `
 - Build, test, SMAPI dll override, versioning and release: [HUMANS.md](HUMANS.md).
 - Command protocol, discovery file and overlay contract: [README.md](README.md).
 - Commands reach SMAPI through `SCore.RawCommandQueue`; re-check it on every SMAPI bump, then update `MinimumApiVersion` and `ApiRange`.
+- The overlay and command servers stay on `TcpListener` with their own small HTTP handling: `HttpListener` is Microsoft's not-for-new-development class, built on HTTP.sys on Windows (URL reservations, host matching) and a narrower managed implementation elsewhere, so it would trade a few dozen lines for platform-dependent behaviour.
 - Do not launch the game from agents.
 
 ## Verify

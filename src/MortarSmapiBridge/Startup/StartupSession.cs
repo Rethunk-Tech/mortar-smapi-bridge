@@ -140,7 +140,7 @@ internal sealed class StartupSession
     {
         try
         {
-            List<StartupMod> mods = StartupReport.Group(ticks, this.NameOf);
+            List<StartupMod> mods = StartupReport.Group(ticks, this.ManifestOf);
             long end = this.phases.TitleScreen > 0 ? this.phases.TitleScreen : this.Now();
             StartupReport report = new()
             {
@@ -203,7 +203,8 @@ internal sealed class StartupSession
         }
     }
 
-    private string NameOf(string id) => this.helper.ModRegistry.Get(id)?.Manifest.Name ?? id;
+    private (string Name, string Version)? ManifestOf(string id) =>
+        this.helper.ModRegistry.Get(id)?.Manifest is { } m ? (m.Name, m.Version.ToString()) : null;
 
     private long Now() => (long)(DateTime.UtcNow - this.processStart).TotalMilliseconds;
 

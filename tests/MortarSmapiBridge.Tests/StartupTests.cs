@@ -54,7 +54,7 @@ public class StartupTests
             [new("FS", "entry", null)] = Ms(2000),
             [new("Quiet", "Rendered", null)] = 0,
         };
-        List<StartupMod> mods = StartupReport.Group(ticks, id => id + " name");
+        List<StartupMod> mods = StartupReport.Group(ticks, _ => null);
 
         Assert.Equal(["CP", "FS"], mods.Select(m => m.Id));
         StartupMod cp = mods[0];

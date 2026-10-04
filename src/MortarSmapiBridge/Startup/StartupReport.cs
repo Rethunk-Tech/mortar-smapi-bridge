@@ -32,10 +32,10 @@ internal sealed class StartupReport
     }
 
     /// <summary>Groups exclusive times by mod; content-pack asset time goes under the framework that applied it.</summary>
-    internal static List<StartupMod> Group(IReadOnlyDictionary<StartupClock.Key, long> ticks, Func<string, string> nameOf)
+    internal static List<StartupMod> Group(IReadOnlyDictionary<StartupClock.Key, long> ticks, Func<string, (string Name, string Version)?> manifestOf)
     {
         Dictionary<string, StartupMod> mods = new(StringComparer.OrdinalIgnoreCase);
-        StartupMod Mod(string id) => mods.TryGetValue(id, out StartupMod? m) ? m : mods[id] = new StartupMod { Id = id, Name = nameOf(id) };
+        StartupMod Mod(string id) => mods.TryGetValue(id, out StartupMod? m) ? m : mods[id] = new StartupMod { Id = id, Name = manifestOf(id)?.Name ?? id, Version = manifestOf(id)?.Version ?? "" };
         foreach ((StartupClock.Key key, long t) in ticks)
         {
             long ms = StartupClock.Milliseconds(t);
@@ -46,7 +46,7 @@ internal sealed class StartupReport
                 mod.AssetMs += ms;
             else if (key.Pack != null)
             {
-                StartupPack pack = mod.Packs.Find(p => p.Id == key.Pack) ?? Add(mod, new StartupPack { Id = key.Pack, Name = nameOf(key.Pack) });
+                StartupPack pack = mod.Packs.Find(p => p.Id == key.Pack) ?? Add(mod, new StartupPack { Id = key.Pack, Name = manifestOf(key.Pack)?.Name ?? key.Pack });
                 if (key.Kind == "load")
                     pack.LoadMs += ms;
                 else
@@ -86,6 +86,7 @@ internal sealed class StartupMod
 {
     [JsonPropertyName("id")] public string Id { get; init; } = "";
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+    [JsonPropertyName("version")] public string Version { get; init; } = "";
     [JsonPropertyName("entryMs")] public long EntryMs { get; set; }
     [JsonPropertyName("eventMs")] public Dictionary<string, long> EventMs { get; init; } = [];
     /// <summary>Asset edits and loads, including the content packs listed in Packs.</summary>

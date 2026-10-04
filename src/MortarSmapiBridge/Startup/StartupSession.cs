@@ -177,6 +177,7 @@ internal sealed class StartupSession
                 EntryMissed = this.entryMissed,
                 Mods = mods,
                 OtherMs = Math.Max(0, end - this.phases.BridgeEntry - mods.Sum(m => m.TotalMs)),
+                Replaces = ReplacedMethods.Collect(this.ownId),
             };
             string path = StartupReport.Write(this.profileDir, report);
             this.monitor.Log($"Startup report written to {path}; {EventTiming.Unwrapped} handlers were removed by their mods while timed.", LogLevel.Trace);

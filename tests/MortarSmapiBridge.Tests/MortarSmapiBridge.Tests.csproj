@@ -10,6 +10,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
     <PackageReference Include="xunit" Version="2.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.*" />
+    <!-- The mod references SMAPI's Harmony without copying it; tests build Harmony's patch records, so they need it beside them. -->
+    <Reference Include="0Harmony" HintPath="../../lib/0Harmony.dll" />
     <ProjectReference Include="../../src/MortarSmapiBridge/MortarSmapiBridge.csproj" />
   </ItemGroup>
 </Project>

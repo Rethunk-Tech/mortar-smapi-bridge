@@ -17,6 +17,8 @@ internal sealed class StartupReport
     [JsonPropertyName("entryMissed")] public int EntryMissed { get; init; }
     [JsonPropertyName("mods")] public List<StartupMod> Mods { get; init; } = [];
     [JsonPropertyName("otherMs")] public long OtherMs { get; init; }
+    /// <summary>Harmony owner to the methods it can replace; see <see cref="ReplacedMethods"/>.</summary>
+    [JsonPropertyName("replaces")] public Dictionary<string, List<string>> Replaces { get; init; } = [];
 
     internal static string Write(string profileDirectory, StartupReport report)
     {

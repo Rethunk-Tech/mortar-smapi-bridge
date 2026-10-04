@@ -61,7 +61,7 @@ internal sealed class StartupSession
         StartupClock.Start();
         ContentPatcherTiming.Patch(this.harmony, this.helper);
         this.events = new EventTiming();
-        if (!this.events.Attach())
+        if (!this.events.Attach() || !this.events.PatchRemove(this.harmony))
         {
             this.monitor.Log("Startup timing: SMAPI's event manager has an unexpected shape; event times are off.", LogLevel.Trace);
             this.events = null;
@@ -179,7 +179,7 @@ internal sealed class StartupSession
                 OtherMs = Math.Max(0, end - this.phases.BridgeEntry - mods.Sum(m => m.TotalMs)),
             };
             string path = StartupReport.Write(this.profileDir, report);
-            this.monitor.Log($"Startup report written to {path}.", LogLevel.Trace);
+            this.monitor.Log($"Startup report written to {path}; {EventTiming.Unwrapped} handlers were removed by their mods while timed.", LogLevel.Trace);
         }
         catch (Exception ex)
         {

@@ -29,8 +29,7 @@ internal sealed class EventTiming
     /// <summary>Finds every ManagedEvent on SMAPI's event manager; false when SMAPI's internals have a different shape.</summary>
     internal bool Attach()
     {
-        Type? core = typeof(Mod).Assembly.GetType("StardewModdingAPI.Framework.SCore");
-        object? instance = core?.GetProperty("Instance", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null);
+        (Type? core, object? instance) = ModEntry.SCore();
         object? manager = core?.GetField("EventManager", Instance)?.GetValue(instance);
         if (manager == null)
             return false;

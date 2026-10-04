@@ -87,6 +87,4 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
         string? failure = this.Submit(line);
         return failure == null ? "ok" : "error: " + failure;
     }
-
-    /// <summary>Read one LF-terminated line of at most <paramref name="max"/> bytes; null if it is missing or longer.</summary>
 }

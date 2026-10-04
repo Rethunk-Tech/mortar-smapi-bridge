@@ -136,6 +136,12 @@ public sealed class ModEntry : Mod
         (T?)(type.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new MissingMemberException(type.FullName, name)).GetValue(null);
 
+    internal static (Type? Type, object? Instance) SCore()
+    {
+        Type? core = typeof(Mod).Assembly.GetType("StardewModdingAPI.Framework.SCore");
+        return (core, core?.GetProperty("Instance", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null));
+    }
+
     internal static Type? GameType() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, "Stardew Valley", StringComparison.OrdinalIgnoreCase))
@@ -222,8 +228,7 @@ public sealed class ModEntry : Mod
     /// </summary>
     private static Action<string>? ResolveRawCommandQueue()
     {
-        Type? core = typeof(Mod).Assembly.GetType("StardewModdingAPI.Framework.SCore");
-        object? instance = core?.GetProperty("Instance", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null);
+        (Type? core, object? instance) = ModEntry.SCore();
         object? queue = core?.GetField("RawCommandQueue", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(instance);
         MethodInfo? add = queue?.GetType().GetMethod("Add", [typeof(string)]);
         return add == null ? null : line => add.Invoke(queue, [line]);

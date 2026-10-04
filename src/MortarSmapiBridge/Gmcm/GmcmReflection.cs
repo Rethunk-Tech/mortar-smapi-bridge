@@ -51,18 +51,7 @@ internal static class GmcmReflection
     }
 
     internal static object? InvokeMember(object target, string name, params object?[] args)
-    {
-        for (Type? type = target.GetType(); type != null; type = type.BaseType)
-        {
-            MethodInfo? method = type.GetMethod(
-                name,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
-            if (method != null)
-                return method.Invoke(target, args);
-        }
-
-        return null;
-    }
+        => TryInvoke(target, name, out object? result, args) ? result : null;
 
     internal static bool TryInvoke(object target, string name, out object? result, params object?[] args)
     {

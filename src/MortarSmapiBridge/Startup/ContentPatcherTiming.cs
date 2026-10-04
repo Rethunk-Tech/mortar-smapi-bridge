@@ -1,5 +1,6 @@
 using System.Reflection;
 using HarmonyLib;
+using MortarSmapiBridge.Gmcm;
 using StardewModdingAPI;
 
 namespace MortarSmapiBridge.Startup;
@@ -72,9 +73,7 @@ internal static class ContentPatcherTiming
 
     private static string? PackId(object? value)
     {
-        const BindingFlags any = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        Type? type = value?.GetType();
-        object? pack = type?.GetProperty("ContentPack", any)?.GetValue(value) ?? type?.GetField("ContentPack", any)?.GetValue(value) ?? value;
+        object? pack = value == null ? null : GmcmReflection.GetMemberValue(value, "ContentPack") ?? value;
         return pack?.GetType().GetProperty("Manifest", BindingFlags.Instance | BindingFlags.Public)?.GetValue(pack) is IManifest manifest ? manifest.UniqueID : null;
     }
 

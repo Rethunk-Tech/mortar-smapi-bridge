@@ -236,7 +236,7 @@ internal sealed class StartupSession
     private long Now() => (long)(DateTime.UtcNow - this.processStart).TotalMilliseconds;
 
     private long FromTimestamp(long timestamp) =>
-        this.Now() - (long)((Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency);
+        this.Now() - StartupClock.Milliseconds(Stopwatch.GetTimestamp() - timestamp);
 
     private static string GameVersion() =>
         ModEntry.GameType()?.GetField("version", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as string ?? "";

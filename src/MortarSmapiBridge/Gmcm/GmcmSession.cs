@@ -52,6 +52,7 @@ internal sealed class GmcmSession
         if (!_gameLaunched || _firstTickDone || _disabled)
             return;
         _firstTickDone = true;
+        _helper.Events.GameLoop.UpdateTicked -= OnUpdateTicked;
         ApplyPending();
         CaptureAll();
     }

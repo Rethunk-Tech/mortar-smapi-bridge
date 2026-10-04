@@ -53,7 +53,8 @@ internal static class ContentPatcherTiming
 
     private static void Prefix(object __instance, object[] __args, out StartupClock.Frame? __state)
     {
-        // The patches stay after the title screen (unpatching blocks the game for seconds), so this must be cheap.
+        // ponytail: the patches stay for the whole session because unpatching blocks the game for seconds, so every
+        // Content Patcher load and UpdateContext pays this check; unpatch after the title screen if Harmony gets a cheap unpatch.
         if (!StartupClock.On)
         {
             __state = null;

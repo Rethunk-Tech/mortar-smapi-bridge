@@ -155,7 +155,10 @@ internal sealed class StartupSession
         this.phases.TitleScreen = titleSeen ? this.Now() : 0;
         StartupClock.Stop();
         this.Unhook();
-        this.Write(StartupClock.Snapshot());
+        // Building and serialising the report jits LINQ and System.Text.Json code for the first time, which took
+        // seconds on the main thread with tiered compilation off; the title screen must not wait for it.
+        IReadOnlyDictionary<StartupClock.Key, long> ticks = StartupClock.Snapshot();
+        Task.Run(() => this.Write(ticks));
     }
 
     private void Write(IReadOnlyDictionary<StartupClock.Key, long> ticks)

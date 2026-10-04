@@ -4,7 +4,7 @@ This is the workflow for maintainers and agents working on this C# SMAPI mod; th
 
 ## Before review
 
-Run `gate` ([`HUMANS.md`](HUMANS.md)). Do not bypass hooks.
+Run [`gate`](https://github.com/Rethunk-Tech/rethunk-gate-cli) from the repo root ([`HUMANS.md`](HUMANS.md)); without it, `dotnet build -c Release && dotnet test -c Release --no-build` runs the same build and tests. Do not bypass hooks.
 
 ## Commits
 

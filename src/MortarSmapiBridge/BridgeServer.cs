@@ -80,11 +80,11 @@ internal sealed class BridgeServer : IDisposable
 
     private async Task<string> Process(NetworkStream stream, CancellationToken cancel)
     {
-        string? token = await ReadLine(stream, MaxTokenBytes, cancel);
+        string? token = await CommandLine.ReadLine(stream, MaxTokenBytes, cancel);
         if (!CommandLine.TokenMatches(this.Token, token))
             return "error: unauthorized";
 
-        string? line = await ReadLine(stream, MaxCommandBytes, cancel);
+        string? line = await CommandLine.ReadLine(stream, MaxCommandBytes, cancel);
         if (line == null)
             return "error: missing or oversized command";
         if (!CommandLine.TryParse(line, out _, out _, out string error))
@@ -96,18 +96,4 @@ internal sealed class BridgeServer : IDisposable
     }
 
     /// <summary>Read one LF-terminated line of at most <paramref name="max"/> bytes; null if it is missing or longer.</summary>
-    private static async Task<string?> ReadLine(NetworkStream stream, int max, CancellationToken cancel)
-    {
-        var bytes = new List<byte>();
-        var one = new byte[1];
-        while (await stream.ReadAsync(one, cancel) == 1)
-        {
-            if (one[0] == (byte)'\n')
-                return Encoding.UTF8.GetString(bytes.ToArray()).TrimEnd('\r');
-            if (bytes.Count >= max)
-                return null;
-            bytes.Add(one[0]);
-        }
-        return null;
-    }
 }

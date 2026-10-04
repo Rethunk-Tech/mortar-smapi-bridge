@@ -144,7 +144,7 @@ internal sealed class GmcmSession
 
             foreach (object modConfig in GmcmReflection.Enumerate(all))
             {
-                if (!TryCaptureOne(modConfig, gmcmVersion ?? "", capturedAt, gmcmDir, out GmcmIndexEntry? entry, out string? error))
+                if (!TryCaptureOne(modConfig, gmcmVersion ?? "", capturedAt, gmcmDir, out GmcmModIdentity? entry, out string? error))
                 {
                     Disable(error ?? "capturing a mod config", null);
                     return;
@@ -162,7 +162,7 @@ internal sealed class GmcmSession
         }
     }
 
-    private bool TryCaptureOne(object modConfig, string gmcmVersion, DateTimeOffset capturedAt, string gmcmDir, out GmcmIndexEntry? entry, out string? error)
+    private bool TryCaptureOne(object modConfig, string gmcmVersion, DateTimeOffset capturedAt, string gmcmDir, out GmcmModIdentity? entry, out string? error)
     {
         entry = null;
         error = null;
@@ -182,7 +182,7 @@ internal sealed class GmcmSession
                 capturedAt);
             string dest = Path.Combine(gmcmDir, SafeFileName(id) + ".json");
             AtomicWrite(dest, JsonSerializer.Serialize(file, JsonOptions));
-            entry = new GmcmIndexEntry { Id = id, Name = name, Version = version };
+            entry = new GmcmModIdentity { Id = id, Name = name, Version = version };
             return true;
         }
         catch (Exception ex)

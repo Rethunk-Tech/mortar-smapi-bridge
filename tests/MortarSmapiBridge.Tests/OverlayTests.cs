@@ -14,7 +14,7 @@ public class OverlayTests
     [InlineData("overlay-token", "", false)]
     [InlineData("overlay-token", null, false)]
     public void OverlayTokenCheck(string expected, string? provided, bool matches) =>
-        Assert.Equal(matches, OverlayServer.TokenMatches(expected, provided));
+        Assert.Equal(matches, CommandLine.TokenMatches(expected, provided));
 
     [Fact]
     public async Task MissingWrongAndCommandTokensReturn401()

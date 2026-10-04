@@ -57,11 +57,10 @@ internal sealed class OverlayServer : IDisposable
         this.Cts.Dispose();
     }
 
-    internal static bool TokenMatches(string expected, string? provided) =>
-        provided != null
-        && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(provided));
 
-    internal static string Serialize(OverlaySnapshot value) => JsonSerializer.Serialize(value);
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+
+    internal static string Serialize(OverlaySnapshot value) => JsonSerializer.Serialize(value, WebJson);
 
     private async Task AcceptLoop()
     {
@@ -102,14 +101,14 @@ internal sealed class OverlayServer : IDisposable
 
     private async Task<string> Process(NetworkStream stream, CancellationToken cancel)
     {
-        string? requestLine = await ReadLine(stream, MaxRequestLineBytes, cancel);
+        string? requestLine = await CommandLine.ReadLine(stream, MaxRequestLineBytes, cancel);
         if (requestLine == null)
             return Response(400, "{\"error\":\"bad request\"}");
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         while (true)
         {
-            string? line = await ReadLine(stream, MaxHeaderLineBytes, cancel);
+            string? line = await CommandLine.ReadLine(stream, MaxHeaderLineBytes, cancel);
             if (line == null)
                 return Response(400, "{\"error\":\"bad request\"}");
             if (line.Length == 0)
@@ -129,7 +128,7 @@ internal sealed class OverlayServer : IDisposable
         if (!string.Equals(GetPath(parts[1]), "/state", StringComparison.Ordinal))
             return Response(404, "{\"error\":\"not found\"}");
 
-        if (!TokenMatches(this.Token, GetToken(parts[1], headers)))
+        if (!CommandLine.TokenMatches(this.Token, GetToken(parts[1], headers)))
             return Response(401, "{\"error\":\"unauthorized\"}", "WWW-Authenticate: Bearer\r\n");
 
         string? current = Volatile.Read(ref this.snapshot);
@@ -170,21 +169,6 @@ internal sealed class OverlayServer : IDisposable
         return queryStart < 0 ? target : target[..queryStart];
     }
 
-    private static async Task<string?> ReadLine(NetworkStream stream, int max, CancellationToken cancel)
-    {
-        var bytes = new List<byte>();
-        var one = new byte[1];
-        while (await stream.ReadAsync(one, cancel) == 1)
-        {
-            if (one[0] == (byte)'\n')
-                return Encoding.UTF8.GetString(bytes.ToArray()).TrimEnd('\r');
-            if (bytes.Count >= max)
-                return null;
-            bytes.Add(one[0]);
-        }
-
-        return null;
-    }
 
     private static string Response(int status, string body, string extraHeaders = "")
     {

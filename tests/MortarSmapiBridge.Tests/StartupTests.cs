@@ -89,3 +89,24 @@ public class StartupTests
         }
     }
 }
+
+public class StartupReportWireTests
+{
+    [Fact]
+    public void TheReportUsesTheNamesMortarReads()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "mortar-startup-wire-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string path = MortarSmapiBridge.Startup.StartupReport.Write(dir, new MortarSmapiBridge.Startup.StartupReport { ProcessStart = new DateTime(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc), EntryTimed = true, OtherMs = 7 });
+            string json = File.ReadAllText(path);
+            foreach (string name in new[] { "\"schema\":1", "\"processStart\":", "\"phases\":", "\"entryTimed\":true", "\"entryMissed\":", "\"mods\":", "\"otherMs\":7", "\"replaces\":" })
+                Assert.Contains(name, json);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, true);
+        }
+    }
+}

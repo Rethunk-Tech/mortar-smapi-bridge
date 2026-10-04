@@ -1,19 +1,18 @@
-using System.Text.Json.Serialization;
 
 namespace MortarSmapiBridge;
 
 internal sealed record OverlaySnapshot(
-    [property: JsonPropertyName("inGame")] bool InGame,
-    [property: JsonPropertyName("location")] string Location,
-    [property: JsonPropertyName("playerName")] string PlayerName,
-    [property: JsonPropertyName("season")] string Season,
-    [property: JsonPropertyName("day")] int Day,
-    [property: JsonPropertyName("year")] int Year,
-    [property: JsonPropertyName("timeOfDay")] int TimeOfDay,
-    [property: JsonPropertyName("money")] int Money,
-    [property: JsonPropertyName("weather")] string Weather,
-    [property: JsonPropertyName("health")] int Health,
-    [property: JsonPropertyName("maxHealth")] int MaxHealth,
-    [property: JsonPropertyName("stamina")] float Stamina,
-    [property: JsonPropertyName("maxStamina")] int MaxStamina,
-    [property: JsonPropertyName("skills")] IReadOnlyDictionary<string, int> Skills);
+    bool InGame,
+    string Location,
+    string PlayerName,
+    string Season,
+    int Day,
+    int Year,
+    int TimeOfDay,
+    int Money,
+    string Weather,
+    int Health,
+    int MaxHealth,
+    float Stamina,
+    int MaxStamina,
+    IReadOnlyDictionary<string, int> Skills);

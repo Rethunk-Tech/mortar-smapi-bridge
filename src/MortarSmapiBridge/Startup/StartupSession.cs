@@ -26,6 +26,7 @@ internal sealed class StartupSession
     private bool entryTimed;
     private int entryMissed;
     private bool done;
+    private bool skipIntro;
 
     private StartupSession(IModHelper helper, IMonitor monitor, string ownId, string profileDir)
     {
@@ -56,6 +57,7 @@ internal sealed class StartupSession
     private void Begin(bool profile)
     {
         this.phases.BridgeEntry = this.Now();
+        this.skipIntro = profile;
         StartupClock.Start();
         ContentPatcherTiming.Patch(this.harmony, this.helper);
         this.events = new EventTiming();
@@ -117,7 +119,13 @@ internal sealed class StartupSession
             if (menu?.GetType().Name != "TitleMenu")
                 return;
             if (this.phases.TitleMenu == 0)
+            {
                 this.phases.TitleMenu = this.Now();
+                // A measured launch skips the intro animation, so the title time is the mods' loading, not a fixed
+                // cut scene that overlaps it.
+                if (this.skipIntro)
+                    menu.GetType().GetMethod("skipToTitleButtons", BindingFlags.Instance | BindingFlags.Public)?.Invoke(menu, null);
+            }
             // The title's intro animation is the game's, not a mod's: the screen counts as reached once the logo
             // has settled and the buttons can be used.
             FieldInfo? settled = menu.GetType().GetField("titleInPosition", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);

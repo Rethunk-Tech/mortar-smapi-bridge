@@ -155,7 +155,7 @@ internal sealed class GmcmSession
                     index.Mods.Add(entry);
             }
 
-            AtomicWrite(Path.Combine(gmcmDir, "_index.json"), JsonSerializer.Serialize(index, JsonOptions));
+            Files.AtomicWrite(Path.Combine(gmcmDir, "_index.json"), JsonSerializer.Serialize(index, JsonOptions));
         }
         catch (Exception ex)
         {
@@ -182,7 +182,7 @@ internal sealed class GmcmSession
                 gmcmVersion,
                 capturedAt);
             string dest = Path.Combine(gmcmDir, SafeFileName(id) + ".json");
-            AtomicWrite(dest, JsonSerializer.Serialize(file, JsonOptions));
+            Files.AtomicWrite(dest, JsonSerializer.Serialize(file, JsonOptions));
             entry = new GmcmModIdentity { Id = id, Name = name, Version = version };
             return true;
         }
@@ -329,24 +329,11 @@ internal sealed class GmcmSession
         return new string(buffer);
     }
 
-    // restrict runs on the still-empty temp file, so its contents are never readable by others.
-    internal static void AtomicWrite(string path, string contents, Action<string>? restrict = null)
-    {
-        string temp = path + ".tmp";
-        if (restrict != null)
-        {
-            File.WriteAllText(temp, "");
-            restrict(temp);
-        }
-        File.WriteAllText(temp, contents);
-        File.Move(temp, path, overwrite: true);
-    }
-
     private static void WriteResult(string pendingPath, GmcmPendingResultFile result)
     {
         string dest = Path.ChangeExtension(pendingPath, ".result.json");
         if (dest.EndsWith(".json.result.json", StringComparison.Ordinal))
             dest = pendingPath[..^".json".Length] + ".result.json";
-        AtomicWrite(dest, JsonSerializer.Serialize(result, JsonOptions));
+        Files.AtomicWrite(dest, JsonSerializer.Serialize(result, JsonOptions));
     }
 }

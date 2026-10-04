@@ -1,6 +1,5 @@
 using System.Net.Sockets;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using StardewModdingAPI;
@@ -30,7 +29,7 @@ public sealed class ModEntry : Mod
         AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
         // The overlay only reads game state, so it has its own game-version gate and does not depend on the command
         // channel's SMAPI checks below.
-        this.StartOverlay(helper);
+        this.StartOverlay(helper, config);
         ISemanticVersion api = Constants.ApiVersion;
         if (!ApiRange.IsTested(api.MajorVersion, api.MinorVersion))
         {
@@ -50,7 +49,7 @@ public sealed class ModEntry : Mod
         this.Server.Start();
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
-        GmcmSession.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }), RestrictFile);
+        Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }), Files.Restrict);
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }
 
@@ -67,9 +66,8 @@ public sealed class ModEntry : Mod
         return null;
     }
 
-    private void StartOverlay(IModHelper helper)
+    private void StartOverlay(IModHelper helper, ModConfig config)
     {
-        ModConfig config = helper.ReadConfig<ModConfig>();
         if (!config.OverlayEnabled)
             return;
 
@@ -193,7 +191,7 @@ public sealed class ModEntry : Mod
         }
         else
         {
-            RestrictFile(Path.Combine(helper.DirectoryPath, "config.json"));
+            Files.Restrict(Path.Combine(helper.DirectoryPath, "config.json"));
         }
 
         return config.OverlayToken;
@@ -204,9 +202,9 @@ public sealed class ModEntry : Mod
         string path = Path.Combine(helper.DirectoryPath, "config.json");
         if (!File.Exists(path))
             File.WriteAllText(path, "");
-        RestrictFile(path);
+        Files.Restrict(path);
         helper.WriteConfig(config);
-        RestrictFile(path);
+        Files.Restrict(path);
     }
 
     private void Shutdown()
@@ -233,13 +231,4 @@ public sealed class ModEntry : Mod
         MethodInfo? add = queue?.GetType().GetMethod("Add", [typeof(string)]);
         return add == null ? null : line => add.Invoke(queue, [line]);
     }
-
-    private static void RestrictFile(string path)
-    {
-        if (!OperatingSystem.IsWindows() && chmod(path, 0x180) != 0)
-            throw new IOException($"Could not restrict permissions on {path}.");
-    }
-
-    [DllImport("libc", SetLastError = true)]
-    private static extern int chmod(string path, uint mode);
 }

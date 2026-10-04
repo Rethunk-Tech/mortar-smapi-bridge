@@ -14,14 +14,14 @@ internal static class EntryTiming
 
     internal static long LastEntryEnd { get; private set; }
 
-    /// <summary>Returns how many mods' Entry had already run, or -1 when SMAPI's shape is unexpected.</summary>
-    internal static int Patch(Harmony harmony, IModInfo own, ISet<string> alreadyRan)
+    /// <summary>Returns false when SMAPI's shape is unexpected.</summary>
+    internal static bool Patch(Harmony harmony, IModInfo own)
     {
         MethodInfo? setApi = own.GetType().GetMethod("SetApi", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         if (setApi == null)
-            return -1;
+            return false;
         harmony.Patch(setApi, postfix: new HarmonyMethod(typeof(EntryTiming).GetMethod(nameof(Postfix), BindingFlags.Static | BindingFlags.NonPublic)));
-        return alreadyRan.Count;
+        return true;
     }
 
     /// <summary>Drops the frame opened after the last mod, which no Entry ran in.</summary>

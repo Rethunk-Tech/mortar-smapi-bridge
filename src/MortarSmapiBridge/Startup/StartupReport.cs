@@ -27,7 +27,7 @@ internal sealed class StartupReport
         string directory = Path.Combine(profileDirectory, "startup");
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, report.ProcessStart.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture) + ".json");
-        Gmcm.GmcmSession.AtomicWrite(path, JsonSerializer.Serialize(report, WebJson));
+        Files.AtomicWrite(path, JsonSerializer.Serialize(report, WebJson));
         foreach (string old in Directory.EnumerateFiles(directory, "*.json").OrderByDescending(f => f, StringComparer.Ordinal).Skip(Kept))
             File.Delete(old);
         return path;

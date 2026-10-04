@@ -20,7 +20,7 @@
     <InternalsVisibleTo Include="MortarSmapiBridge.Tests" />
   </ItemGroup>
 
-  <Target Name="FetchSmapi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SmapiDll)') Or !Exists('$(SmapiCoreInterfacesDll)')">
+  <Target Name="FetchSmapi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SmapiDll)') Or !Exists('$(SmapiCoreInterfacesDll)') Or !Exists('$(HarmonyDll)')">
     <Exec Command="bash &quot;$(MSBuildThisFileDirectory)../../scripts/fetch-smapi.sh&quot;" />
   </Target>
 

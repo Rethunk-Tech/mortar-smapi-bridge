@@ -68,7 +68,7 @@ internal sealed class StartupSession
         }
         if (profile)
         {
-            HashSet<string> ran = new(StringComparer.OrdinalIgnoreCase);
+            int ran = 0;
             IModInfo? own = null;
             foreach (IModInfo mod in this.helper.ModRegistry.GetAll())
             {
@@ -78,17 +78,17 @@ internal sealed class StartupSession
                     break;
                 }
                 if (!mod.IsContentPack)
-                    ran.Add(mod.Manifest.UniqueID);
+                    ran++;
             }
-            this.entryMissed = own == null ? -1 : EntryTiming.Patch(this.harmony, own, ran);
-            if (this.entryMissed < 0)
+            if (own != null && EntryTiming.Patch(this.harmony, own))
             {
-                this.monitor.Log("Startup timing: SMAPI's mod metadata has an unexpected shape; Entry times are off.", LogLevel.Trace);
-                this.entryMissed = 0;
+                this.entryMissed = ran;
+                this.entryTimed = true;
             }
             else
             {
-                this.entryTimed = true;
+                this.monitor.Log("Startup timing: SMAPI's mod metadata has an unexpected shape; Entry times are off.", LogLevel.Trace);
+                this.entryMissed = 0;
             }
         }
         this.helper.Events.Content.AssetRequested += this.OnAssetRequested;

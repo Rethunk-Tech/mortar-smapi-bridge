@@ -160,8 +160,8 @@ public sealed class GmcmWalkerTests
         string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         string path = Path.Combine(dir, "demo.Mod.json");
-        GmcmSession.AtomicWrite(path, "{\"a\":1}");
-        GmcmSession.AtomicWrite(path, "{\"a\":2}");
+        Files.AtomicWrite(path, "{\"a\":1}");
+        Files.AtomicWrite(path, "{\"a\":2}");
         Assert.Equal("{\"a\":2}", File.ReadAllText(path));
         Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
     }

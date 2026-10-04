@@ -66,7 +66,7 @@ internal static class CommandLine
         }
 
         name = tokens[0];
-        args = tokens.Skip(1).ToArray();
+        args = [.. tokens.Skip(1)];
         return true;
     }
 
@@ -85,7 +85,7 @@ internal static class CommandLine
         while (await stream.ReadAsync(one, cancel) == 1)
         {
             if (one[0] == (byte)'\n')
-                return Encoding.UTF8.GetString(bytes.ToArray()).TrimEnd('\r');
+                return Encoding.UTF8.GetString([.. bytes]).TrimEnd('\r');
             if (bytes.Count >= max)
                 return null;
             bytes.Add(one[0]);

@@ -97,8 +97,8 @@ public sealed class GmcmWalkerTests
     public void MatchesStableFieldIdElsePageIndexKindName()
     {
         ModConfig config = SampleConfig();
-        List<GmcmPendingEdit> edits = new()
-        {
+        List<GmcmPendingEdit> edits =
+        [
             new GmcmPendingEdit
             {
                 Page = "",
@@ -125,7 +125,7 @@ public sealed class GmcmWalkerTests
                 Name = "Section",
                 Value = true
             }
-        };
+        ];
 
         GmcmPendingResultFile result = GmcmApply.ApplyEdits(config, edits);
         Assert.False((bool)config.Pages[""].Options[0].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[0])!);
@@ -150,7 +150,7 @@ public sealed class GmcmWalkerTests
         List<string> order = config.SaveLog;
         GmcmApply.SaveLikeGmcm(config);
         Assert.Equal(
-            Enumerable.Repeat("before", 10).Concat(new[] { "save" }).Concat(Enumerable.Repeat("after", 10)).ToArray(),
+            Enumerable.Repeat("before", 10).Concat(["save"]).Concat(Enumerable.Repeat("after", 10)).ToArray(),
             order);
     }
 
@@ -180,7 +180,7 @@ public sealed class GmcmWalkerTests
             getValue = () => 1,
             setValue = _ => { },
             MaxValue = 2,
-            Labels = new[] { "one", "two", "three" }
+            Labels = ["one", "two", "three"]
         };
 
         ModConfig config = new()
@@ -210,7 +210,7 @@ public sealed class GmcmWalkerTests
                             FieldId = "pick",
                             Name = () => "Pick",
                             Value = "b",
-                            Choices = new[] { "a", "b" },
+                            Choices = ["a", "b"],
                             FormatChoice = v => v == "a" ? "Aye" : "Bee"
                         },
                         new SectionTitleModOption { Name = () => "Section" },
@@ -247,8 +247,8 @@ public sealed class GmcmWalkerTests
     {
         public Manifest ModManifest { get; set; } = new();
         public bool DefaultTitleScreenOnly { get; set; }
-        public Dictionary<string, ModConfigPage> Pages { get; set; } = new();
-        public List<string> SaveLog { get; } = new();
+        public Dictionary<string, ModConfigPage> Pages { get; set; } = [];
+        public List<string> SaveLog { get; } = [];
 
         public void Save() => SaveLog.Add("save");
     }
@@ -256,7 +256,7 @@ public sealed class GmcmWalkerTests
     public sealed class ModConfigPage
     {
         public Func<string>? PageTitle { get; set; }
-        public List<BaseModOption> Options { get; set; } = new();
+        public List<BaseModOption> Options { get; set; } = [];
     }
 
     public abstract class BaseModOption
@@ -289,7 +289,7 @@ public sealed class GmcmWalkerTests
     public sealed class ChoiceModOption<T> : BaseModOption
     {
         public T Value { get; set; } = default!;
-        public T[] Choices { get; set; } = Array.Empty<T>();
+        public T[] Choices { get; set; } = [];
         public Func<T, string>? FormatChoice { get; set; }
     }
 
@@ -338,7 +338,7 @@ namespace GMCMOptions.Framework
         public Func<int> getValue { get; set; } = () => 0;
         public Action<int> setValue { get; set; } = _ => { };
         public int MaxValue { get; set; }
-        public string[] Labels { get; set; } = Array.Empty<string>();
+        public string[] Labels { get; set; } = [];
 
         public void Draw(int _) { }
     }

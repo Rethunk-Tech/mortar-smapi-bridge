@@ -15,7 +15,7 @@ internal sealed class GmcmCaptureFile
 
     public bool TitleScreenOnlyDefault { get; set; }
 
-    public List<GmcmPageCapture> Pages { get; set; } = new();
+    public List<GmcmPageCapture> Pages { get; set; } = [];
 }
 
 internal sealed class GmcmModIdentity
@@ -33,7 +33,7 @@ internal sealed class GmcmPageCapture
 
     public string? Title { get; set; }
 
-    public List<GmcmOptionCapture> Options { get; set; } = new();
+    public List<GmcmOptionCapture> Options { get; set; } = [];
 }
 
 internal sealed class GmcmOptionCapture
@@ -93,14 +93,14 @@ internal sealed class GmcmIndexFile
 
     public string CapturedAt { get; set; } = "";
 
-    public List<GmcmModIdentity> Mods { get; set; } = new();
+    public List<GmcmModIdentity> Mods { get; set; } = [];
 }
 
 internal sealed class GmcmPendingFile
 {
     public int Schema { get; set; } = 1;
 
-    public List<GmcmPendingEdit> Edits { get; set; } = new();
+    public List<GmcmPendingEdit> Edits { get; set; } = [];
 }
 
 internal sealed class GmcmPendingEdit
@@ -120,9 +120,9 @@ internal sealed class GmcmPendingEdit
 
 internal sealed class GmcmPendingResultFile
 {
-    public List<GmcmPendingEdit> Applied { get; set; } = new();
+    public List<GmcmPendingEdit> Applied { get; set; } = [];
 
-    public List<GmcmSkippedEdit> Skipped { get; set; } = new();
+    public List<GmcmSkippedEdit> Skipped { get; set; } = [];
 }
 
 internal sealed class GmcmSkippedEdit

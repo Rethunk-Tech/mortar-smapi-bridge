@@ -9,8 +9,8 @@ internal static class GmcmApply
     internal static GmcmPendingResultFile ApplyEdits(object modConfig, IReadOnlyList<GmcmPendingEdit> edits)
     {
         GmcmPendingResultFile result = new();
-        Dictionary<(string Page, int Index), object> byIndex = new();
-        Dictionary<string, object> byFieldId = new();
+        Dictionary<(string Page, int Index), object> byIndex = [];
+        Dictionary<string, object> byFieldId = [];
         IndexOptions(modConfig, byIndex, byFieldId);
 
         foreach (GmcmPendingEdit edit in edits)
@@ -44,7 +44,7 @@ internal static class GmcmApply
     {
         object? pages = GmcmReflection.GetMemberValue(modConfig, "Pages")
             ?? throw new InvalidOperationException("ModConfig.Pages");
-        List<object> options = new();
+        List<object> options = [];
         foreach (KeyValuePair<string, object> page in GmcmReflection.EnumeratePages(pages))
         {
             object? pageOptions = GmcmReflection.GetMemberValue(page.Value, "Options");
@@ -159,7 +159,7 @@ internal static class GmcmApply
             switch (element.ValueKind)
             {
                 case JsonValueKind.Object:
-                    Dictionary<string, object?> map = new();
+                    Dictionary<string, object?> map = [];
                     foreach (JsonProperty property in element.EnumerateObject())
                         map[property.Name] = UnwrapJson(property.Value);
                     return map;

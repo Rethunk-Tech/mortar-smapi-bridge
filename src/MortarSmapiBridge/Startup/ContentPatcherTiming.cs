@@ -85,7 +85,7 @@ internal static class ContentPatcherTiming
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return ex.Types.OfType<Type>().ToArray();
+            return [.. ex.Types.OfType<Type>()];
         }
     }
 }

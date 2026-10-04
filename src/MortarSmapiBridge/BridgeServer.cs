@@ -5,7 +5,10 @@ using System.Text;
 namespace MortarSmapiBridge;
 
 /// <summary>Loopback-only TCP server: one connection per command, <c>token\ncommand\n</c> in, <c>ok\n</c> or <c>error: msg\n</c> out.</summary>
-internal sealed class BridgeServer : IDisposable
+/// <param name="token">The shared secret clients must present.</param>
+/// <param name="submit">Queues a validated command line; returns an error message, or null on success.</param>
+/// <param name="trace">Logs a received command.</param>
+internal sealed class BridgeServer(string token, Func<string, string?> submit, Action<string> trace) : IDisposable
 {
     public const int MaxCommandBytes = 4096;
     private const int MaxTokenBytes = 128;
@@ -13,19 +16,9 @@ internal sealed class BridgeServer : IDisposable
 
     private readonly TcpListener Listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource Cts = new();
-    private readonly string Token;
-    private readonly Func<string, string?> Submit;
-    private readonly Action<string> Trace;
-
-    /// <param name="token">The shared secret clients must present.</param>
-    /// <param name="submit">Queues a validated command line; returns an error message, or null on success.</param>
-    /// <param name="trace">Logs a received command.</param>
-    public BridgeServer(string token, Func<string, string?> submit, Action<string> trace)
-    {
-        this.Token = token;
-        this.Submit = submit;
-        this.Trace = trace;
-    }
+    private readonly string Token = token;
+    private readonly Func<string, string?> Submit = submit;
+    private readonly Action<string> Trace = trace;
 
     public int Port => ((IPEndPoint)this.Listener.LocalEndpoint).Port;
 

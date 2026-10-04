@@ -75,16 +75,16 @@ public class OverlayTests
         using JsonDocument json = JsonDocument.Parse(OverlayServer.Serialize(CreateSnapshot()));
         JsonElement root = json.RootElement;
         Assert.True(root.GetProperty("inGame").GetBoolean());
-        Assert.Equal(
-            new[]
-            {
-                "inGame", "location", "playerName", "season", "day", "year", "timeOfDay", "money", "weather",
-                "health", "maxHealth", "stamina", "maxStamina", "skills"
-            },
-            root.EnumerateObject().Select(p => p.Name).ToArray());
-        Assert.Equal(
-            new[] { "farming", "fishing", "foraging", "mining", "combat", "luck" },
-            root.GetProperty("skills").EnumerateObject().Select(p => p.Name).ToArray());
+        string[] fields =
+        [
+            "inGame", "location", "playerName", "season", "day", "year", "timeOfDay", "money", "weather",
+            "health", "maxHealth", "stamina", "maxStamina", "skills"
+        ];
+        string[] written = [.. root.EnumerateObject().Select(p => p.Name)];
+        Assert.Equal(fields, written);
+        string[] skills = ["farming", "fishing", "foraging", "mining", "combat", "luck"];
+        string[] writtenSkills = [.. root.GetProperty("skills").EnumerateObject().Select(p => p.Name)];
+        Assert.Equal(skills, writtenSkills);
     }
 
     [Fact]

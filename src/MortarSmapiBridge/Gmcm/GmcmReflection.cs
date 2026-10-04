@@ -149,7 +149,7 @@ internal static class GmcmReflection
             case System.Text.Json.JsonValueKind.Object:
                 if (LooksLikeColor(targetType))
                 {
-                    Dictionary<string, object?> parts = new();
+                    Dictionary<string, object?> parts = [];
                     foreach (System.Text.Json.JsonProperty property in element.EnumerateObject())
                         parts[property.Name] = CoerceJson(property.Value, typeof(object));
                     return ColorFromComponents(targetType, parts);

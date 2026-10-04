@@ -339,7 +339,7 @@ internal sealed class GmcmSession
     {
         string dest = Path.ChangeExtension(pendingPath, ".result.json");
         if (dest.EndsWith(".json.result.json", StringComparison.Ordinal))
-            dest = pendingPath.Substring(0, pendingPath.Length - ".json".Length) + ".result.json";
+            dest = pendingPath[..^".json".Length] + ".result.json";
         AtomicWrite(dest, JsonSerializer.Serialize(result, JsonOptions));
     }
 }

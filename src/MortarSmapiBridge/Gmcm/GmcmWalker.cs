@@ -170,7 +170,7 @@ internal static class GmcmWalker
         if (formatter is not Delegate format)
             return null;
 
-        List<GmcmFormatSample> samples = new();
+        List<GmcmFormatSample> samples = [];
         if (argument == typeof(float) || min is float || min is double)
         {
             float start = Convert.ToSingle(min, CultureInfo.InvariantCulture);
@@ -219,7 +219,7 @@ internal static class GmcmWalker
         object? formatter = GmcmReflection.GetMemberValue(option, "FormatChoice")
             ?? GmcmReflection.GetMemberValue(option, "formatChoice");
         Delegate? format = formatter as Delegate;
-        capture.Choices = new List<GmcmChoiceCapture>();
+        capture.Choices = [];
         foreach (object choice in GmcmReflection.Enumerate(GmcmReflection.GetMemberValue(option, "Choices")))
         {
             capture.Choices.Add(new GmcmChoiceCapture
@@ -248,7 +248,7 @@ internal static class GmcmWalker
             object? color = InvokeGetter(picker);
             Dictionary<string, object?> value = color != null
                 ? GmcmReflection.ColorToJson(color)
-                : new Dictionary<string, object?>();
+                : [];
             value["showAlpha"] = GmcmReflection.GetMemberValue(picker, "showAlpha")
                 ?? GmcmReflection.GetMemberValue(picker, "ShowAlpha")
                 ?? false;
@@ -270,7 +270,7 @@ internal static class GmcmWalker
                 ?? GmcmReflection.GetMemberValue(picker, "Labels");
             if (labels != null)
             {
-                capture.Choices = new List<GmcmChoiceCapture>();
+                capture.Choices = [];
                 int i = 0;
                 foreach (object label in GmcmReflection.Enumerate(labels))
                 {
@@ -348,7 +348,7 @@ internal static class GmcmWalker
         if (setter is Delegate del)
         {
             Type[]? parameters = del.Method.GetParameters() is { Length: > 0 } args
-                ? new[] { args[0].ParameterType }
+                ? [args[0].ParameterType]
                 : null;
             object? coerced = parameters == null ? value : GmcmReflection.Coerce(value, parameters[0]);
             if (value is Dictionary<string, object?> dict && parameters != null)

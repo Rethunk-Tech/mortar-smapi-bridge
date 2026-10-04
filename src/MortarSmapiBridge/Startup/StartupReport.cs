@@ -65,7 +65,7 @@ internal sealed class StartupReport
             foreach (string quiet in mod.EventMs.Where(p => p.Value == 0).Select(p => p.Key).ToList())
                 mod.EventMs.Remove(quiet);
         }
-        return mods.Values.Where(m => m.TotalMs > 0).OrderByDescending(m => m.TotalMs).ToList();
+        return [.. mods.Values.Where(m => m.TotalMs > 0).OrderByDescending(m => m.TotalMs)];
     }
 
     private static StartupPack Add(StartupMod mod, StartupPack pack)

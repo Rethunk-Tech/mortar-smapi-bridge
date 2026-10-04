@@ -24,10 +24,10 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - Writes `mortar-smapi-bridge.json` (`port`, `token`, `pid`) in the mod folder and deletes it on exit
 - Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
 - Command channel runs on SMAPI 4.5 and later 4.x; the overlay runs only on Stardew Valley 1.6.15. The two gates are independent: either can be off while the other runs.
+- [GMCM menu capture](#gmcm-menu-capture): each mod's Generic Mod Config Menu options as JSON, and edits from Mortar applied back
+- [Startup timings](#startup-timings): per-mod time from launch to the title screen, and the game methods each mod's Harmony patches can replace
 
-GMCM menu capture (profile dir = the nearest folder above the mod that holds Mortar's `profile.json`; without one, nothing is written): `gmcm/<UniqueID>.json` per mod, written atomically, `{schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault, pages: [{id, title, options: [{index, kind, fieldId, name, tooltip, value, min, max, interval, choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}` (`fieldId` omitted when it looks like a GUID); `gmcm/_index.json` lists captured mods and the GMCM version. Capture runs on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`. Apply reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}` on that first title-screen tick before capture; match by `fieldId` when it is not a GUID, else `(page, index, kind, name)`; then every option `BeforeSave` → `ModConfig.Save` → `AfterSave`. Writes `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}` and deletes the pending file only after a successful save. Unregistered mods and failed matches are skipped with reasons. Set `GmcmEnabled` to `false` in `config.json` to turn this off.
 
-Startup timings (on unless `StartupTimings` is `false` in `config.json`; inside a Mortar profile only): from the bridge's `Entry` to the title screen, each mod's exclusive time in every SMAPI event handler and in the asset edits and loads it registered, with Content Patcher's time split by content pack (loading `content.json` and `config.json`, parsing patches, evaluating each patch's tokens, and its edits). Exclusive means time spent in another measured mod's code, such as an asset edit triggered from an update tick, is charged to that mod only. `StartupProfile: true` also times each other mod's `Entry` and `GetApi`, from SMAPI's side: a postfix on SMAPI's own per-mod `SetApi` call charges the time since the previous call to the mod that just finished, so no mod's own method is patched. A measured launch also skips the title intro animation, so the title time measures loading rather than a fixed cut scene. At the title screen the event hooks are removed and the clock stops; the Harmony patches stay in place but do nothing, since unpatching regenerates every patched method and froze the title screen for seconds. Mortar loads the bridge first through `SMAPI-config.json`'s `ModsToLoadEarly`, so no mod's `Entry` runs before it. Report: `startup/<process start UTC>.json` in the profile dir, the last 10 kept, `{schema: 1, smapi, game, processStart, phases: {bridgeEntry, entryDone, gameLaunched, titleMenu, titleScreen} (ms from process start), entryTimed, entryMissed, mods: [{id, name, version, entryMs, eventMs: {<event>: ms}, assetMs, loadMs, packs: [{id, name, assetMs, loadMs, ms}]}], otherMs, replaces: {<Harmony ID>: ["<Type.FullName>::<method>"]}}`. `replaces` is read from Harmony's patch registry as the report is written: per Harmony ID (by convention the mod's UniqueID; the bridge's own IDs are left out), the methods it can replace outright, meaning transpilers and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
 
 ## Nexus page description
 
@@ -102,6 +102,42 @@ A small OBS browser-source example is in [`examples/overlay/index.html`](example
 | `skill.mining` | mining level |
 | `skill.combat` | combat level |
 | `skill.luck` | luck level |
+
+## GMCM menu capture
+
+On unless `GmcmEnabled` is `false` in `config.json`. Files go in the profile dir: the nearest folder above the mod that holds Mortar's `profile.json`; without one, nothing is written.
+
+- **When:** on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`.
+- **Capture:** `gmcm/<UniqueID>.json` per mod, written atomically; `gmcm/_index.json` lists the captured mods and the GMCM version. `fieldId` is omitted when it looks like a GUID.
+
+  ```text
+  {schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault,
+   pages: [{id, title, options: [{index, kind, fieldId, name, tooltip, value, min, max, interval,
+     choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}
+  ```
+
+- **Apply:** on that first title-screen tick, before capture, the bridge reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}`. Each edit matches by `fieldId` when it is not a GUID, else by `(page, index, kind, name)`; then every option runs `BeforeSave` → `ModConfig.Save` → `AfterSave`.
+- **Result:** `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}`; the pending file is deleted only after a successful save. Unregistered mods and failed matches are skipped with reasons.
+
+## Startup timings
+
+On unless `StartupTimings` is `false` in `config.json`, and only inside a Mortar profile. Mortar loads the bridge first through `SMAPI-config.json`'s `ModsToLoadEarly`, so no mod's `Entry` runs before it.
+
+- **Measured:** from the bridge's `Entry` to the title screen, each mod's exclusive time in every SMAPI event handler and in the asset edits and loads it registered. Content Patcher's time is split by content pack: loading `content.json` and `config.json`, parsing patches, evaluating each patch's tokens, and its edits. Exclusive means time spent in another measured mod's code, such as an asset edit triggered from an update tick, is charged to that mod only.
+- **`StartupProfile: true`:** also times each other mod's `Entry` and `GetApi` from SMAPI's side: a postfix on SMAPI's own per-mod `SetApi` call charges the time since the previous call to the mod that just finished, so no mod's own method is patched. A measured launch also skips the title intro animation, so the title time measures loading rather than a fixed cut scene.
+- **At the title screen:** the event hooks are removed and the clock stops. The Harmony patches stay in place but do nothing, since unpatching regenerates every patched method, which freezes the title screen for seconds.
+- **Report:** `startup/<process start UTC>.json` in the profile dir, the last 10 kept. Phases are ms from process start.
+
+  ```text
+  {schema: 1, smapi, game, processStart,
+   phases: {bridgeEntry, entryDone, gameLaunched, titleMenu, titleScreen},
+   entryTimed, entryMissed,
+   mods: [{id, name, version, entryMs, eventMs: {<event>: ms}, assetMs, loadMs,
+     packs: [{id, name, assetMs, loadMs, ms}]}],
+   otherMs, replaces: {<Harmony ID>: ["<Type.FullName>::<method>"]}}
+  ```
+
+- **`replaces`:** read from Harmony's patch registry as the report is written. Per Harmony ID (by convention the mod's UniqueID; the bridge's own IDs are left out), the methods it can replace outright: transpilers, and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
 
 ## Documentation
 

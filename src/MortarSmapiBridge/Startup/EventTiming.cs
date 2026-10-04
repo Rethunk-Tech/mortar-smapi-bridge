@@ -20,7 +20,7 @@ internal sealed class EventTiming
     private readonly List<(object Handler, FieldInfo Field, Delegate Original)> originals = [];
     private readonly List<Type> eventTypes = [];
 
-    // A mod that removes its own handler passes the original delegate, which no longer matches the wrapper in SMAPI's
+    // A mod that removes its own handler passes the original delegate, which differs from the wrapper in SMAPI's
     // list; the Remove prefix puts the original back in that handler first, so run-once handlers still unsubscribe.
     private static readonly ConcurrentDictionary<Delegate, (object Handler, FieldInfo Field)> wrapped = new();
 

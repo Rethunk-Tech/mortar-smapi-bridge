@@ -22,6 +22,10 @@ public sealed class ModEntry : Mod
     public override void Entry(IModHelper helper)
     {
         new MortarSmapiBridge.Gmcm.GmcmSession(helper, this.Monitor, helper.ReadConfig<ModConfig>()).Attach();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
+        // The overlay only reads game state, so it has its own game-version gate and does not depend on the command
+        // channel's SMAPI checks below.
+        this.StartOverlay(helper);
         ISemanticVersion api = Constants.ApiVersion;
         if (!ApiRange.IsTested(api.MajorVersion, api.MinorVersion))
         {
@@ -32,7 +36,7 @@ public sealed class ModEntry : Mod
         this.Enqueue = ResolveRawCommandQueue();
         if (this.Enqueue == null)
         {
-            this.Monitor.Log("This SMAPI version has no reachable raw command queue; the bridge is disabled.", LogLevel.Error);
+            this.Monitor.Log("This SMAPI version has no reachable raw command queue; console commands from Mortar are off.", LogLevel.Error);
             return;
         }
 
@@ -42,8 +46,6 @@ public sealed class ModEntry : Mod
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
         WriteStateFile(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }));
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
-        this.StartOverlay(helper);
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }
 

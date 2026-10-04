@@ -8,7 +8,7 @@
 
 ---
 
-A SMAPI mod that lets the [Mortar](https://github.com/Rethunk-AI/mortar) mod manager send console commands to a running Stardew Valley. Mortar launches the game through Steam and only reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
+A SMAPI mod that lets the [Mortar](https://github.com/Rethunk-AI/mortar) mod manager send console commands to a running Stardew Valley. Mortar starts the game through its launcher (Steam, GOG, Heroic or Lutris) and reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
 
 ## Quick start
 
@@ -23,9 +23,9 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - Loopback TCP command channel: one connection per SMAPI console line, authenticated with a per-run token
 - Writes `mortar-smapi-bridge.json` (`port`, `token`, `pid`) in the mod folder and deletes it on exit
 - Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
-- Command channel runs on SMAPI 4.5 and later 4.x; overlay runs only on Stardew Valley 1.6.15
+- Command channel runs on SMAPI 4.5 and later 4.x; the overlay runs only on Stardew Valley 1.6.15. The two gates are independent: either can be off while the other runs.
 
-GMCM menu capture (profile dir = parent of SMAPI `--mods-path` / `Constants.ModsPath`): `gmcm/<UniqueID>.json` per mod, written atomically, `{schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault, pages: [{id, title, options: [{index, kind, fieldId, name, tooltip, value, min, max, interval, choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}` (`fieldId` omitted when it looks like a GUID); `gmcm/_index.json` lists captured mods and the GMCM version. Capture runs on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`. Apply reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}` on that first title-screen tick before capture; match by `fieldId` when it is not a GUID, else `(page, index, kind, name)`; then every option `BeforeSave` → `ModConfig.Save` → `AfterSave`. Writes `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}` and deletes the pending file only after a successful save. Unregistered mods and failed matches are skipped with reasons. Set `GmcmEnabled` to `false` in `config.json` to turn this off.
+GMCM menu capture (profile dir = the nearest folder above the mod that holds Mortar's `profile.json`; without one, nothing is written): `gmcm/<UniqueID>.json` per mod, written atomically, `{schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault, pages: [{id, title, options: [{index, kind, fieldId, name, tooltip, value, min, max, interval, choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}` (`fieldId` omitted when it looks like a GUID); `gmcm/_index.json` lists captured mods and the GMCM version. Capture runs on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`. Apply reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}` on that first title-screen tick before capture; match by `fieldId` when it is not a GUID, else `(page, index, kind, name)`; then every option `BeforeSave` → `ModConfig.Save` → `AfterSave`. Writes `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}` and deletes the pending file only after a successful save. Unregistered mods and failed matches are skipped with reasons. Set `GmcmEnabled` to `false` in `config.json` to turn this off.
 
 ## Nexus page description
 

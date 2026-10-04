@@ -13,6 +13,20 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+      - run: scripts/fetch-smapi.sh
+      - run: dotnet build -c Release
+      - run: dotnet test -c Release --no-build
+
+  # Only a v* tag publishes, so only this job can write to the repository.
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -22,9 +36,7 @@ jobs:
           dotnet-version: 10.0.x
       - run: scripts/fetch-smapi.sh
       - run: dotnet build -c Release
-      - run: dotnet test -c Release --no-build
       - name: Package
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           version="$(dotnet msbuild src/MortarSmapiBridge/MortarSmapiBridge.csproj -getProperty:Version)"
           if [ "v$version" != "$GITHUB_REF_NAME" ]; then
@@ -36,7 +48,6 @@ jobs:
           cp "$out/MortarSmapiBridge.dll" "$out/manifest.json" dist/MortarSmapiBridge/
           (cd dist && zip -r "MortarSmapiBridge-$version.zip" MortarSmapiBridge && sha256sum "MortarSmapiBridge-$version.zip" > "MortarSmapiBridge-$version.zip.sha256")
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -34,15 +34,10 @@ internal sealed class OverlayServer : IDisposable
 
     public static bool IsValidPort(int port) => port is >= 1 and <= 65535;
 
-    public static bool ShouldStart(ModConfig config, bool gameVersionTested) =>
-        config.OverlayEnabled && gameVersionTested;
-
     public void SetNotInGame() => Volatile.Write(ref this.snapshot, NotInGameJson);
 
     public void SetSnapshot(OverlaySnapshot? value) =>
         Volatile.Write(ref this.snapshot, value == null ? null : Serialize(value));
-
-    internal static bool ShouldLogReadError(ISet<string> seen, string message) => seen.Add(message);
 
     public void Start()
     {

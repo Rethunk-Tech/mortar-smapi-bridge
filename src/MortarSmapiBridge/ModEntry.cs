@@ -126,7 +126,7 @@ public sealed class ModEntry : Mod
         }
         catch (Exception ex)
         {
-            if (OverlayServer.ShouldLogReadError(this.OverlayReadErrors, ex.Message))
+            if (this.OverlayReadErrors.Add(ex.Message))
                 this.Monitor.Log($"Stream overlay state is unavailable: {ex.Message}", LogLevel.Error);
         }
     }

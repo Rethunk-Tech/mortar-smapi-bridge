@@ -88,16 +88,6 @@ public class OverlayTests
     }
 
     [Fact]
-    public void OverlayReadErrorIsLoggedOncePerMessage()
-    {
-        var seen = new HashSet<string>();
-        Assert.True(OverlayServer.ShouldLogReadError(seen, "missing player"));
-        Assert.False(OverlayServer.ShouldLogReadError(seen, "missing player"));
-        Assert.True(OverlayServer.ShouldLogReadError(seen, "missing location"));
-        Assert.False(OverlayServer.ShouldLogReadError(seen, "missing location"));
-    }
-
-    [Fact]
     public void GameVersionGateMatchesVerifiedBuildOnly()
     {
         Assert.True(ApiRange.IsTestedGame(1, 6, 15));
@@ -108,8 +98,7 @@ public class OverlayTests
     [Fact]
     public void DisabledOverlayDoesNotOpenItsConfiguredPort()
     {
-        var config = new ModConfig();
-        Assert.False(OverlayServer.ShouldStart(config, gameVersionTested: true));
+        Assert.False(new ModConfig().OverlayEnabled);
 
         int port = GetFreePort();
         using var listener = new TcpListener(IPAddress.Loopback, port);

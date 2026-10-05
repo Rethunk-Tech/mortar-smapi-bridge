@@ -120,6 +120,8 @@ internal sealed class GmcmPendingEdit
 
 internal sealed class GmcmPendingResultFile
 {
+    public int Schema { get; set; } = GmcmSchema.Current;
+
     public List<GmcmPendingEdit> Applied { get; set; } = [];
 
     public List<GmcmSkippedEdit> Skipped { get; set; } = [];

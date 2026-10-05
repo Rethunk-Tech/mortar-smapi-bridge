@@ -155,6 +155,39 @@ public sealed class GmcmWalkerTests
         Assert.Equal(2, result.Applied.Count);
     }
 
+    // Mortar reads these files with its own types; its tests parse copies of these fixtures, so a change to either
+    // side's format shows up as a fixture diff. MORTAR_BRIDGE_WRITE_FIXTURES=1 rewrites them.
+    [Fact]
+    public void CaptureAndResultMatchTheFixturesMortarReads()
+    {
+        ModConfig config = SampleConfig();
+        GmcmCaptureFile capture = GmcmWalker.WalkModConfig(
+            config,
+            new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+            "1.12.0",
+            DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
+        GmcmPendingResultFile result = GmcmApply.ApplyEdits(config,
+        [
+            new GmcmPendingEdit { Page = "", Index = 2, Kind = "int", Name = "Count", Value = 3 },
+            new GmcmPendingEdit { Page = "", Index = 4, Kind = "bool", Name = "Section", Value = true },
+        ]);
+        AssertFixture("gmcm-capture.json", JsonSerializer.Serialize(capture, GmcmSession.JsonOptions));
+        AssertFixture("gmcm-result.json", JsonSerializer.Serialize(result, GmcmSession.JsonOptions));
+    }
+
+    private static void AssertFixture(string name, string json, [System.Runtime.CompilerServices.CallerFilePath] string source = "")
+    {
+        string path = Path.Combine(Path.GetDirectoryName(source)!, "fixtures", name);
+        json = json.Replace("\r\n", "\n") + "\n";
+        if (Environment.GetEnvironmentVariable("MORTAR_BRIDGE_WRITE_FIXTURES") == "1")
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, json);
+        }
+
+        Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n"), json);
+    }
+
     [Fact]
     public void LooksLikeGuidDetectsGmcmGeneratedIds()
     {

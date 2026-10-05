@@ -169,7 +169,7 @@ internal sealed class StartupSession
             long end = this.phases.TitleScreen > 0 ? this.phases.TitleScreen : this.Now();
             StartupReport report = new()
             {
-                Smapi = Constants.ApiVersion.ToString(),
+                Loader = Constants.ApiVersion.ToString(),
                 Game = GameVersion(),
                 ProcessStart = this.processStart,
                 Phases = this.phases,

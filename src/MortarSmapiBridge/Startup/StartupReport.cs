@@ -9,7 +9,7 @@ internal sealed class StartupReport
     internal const int Kept = 10;
 
     public int Schema { get; init; } = 1;
-    public string Smapi { get; init; } = "";
+    public string Loader { get; init; } = "";
     public string Game { get; init; } = "";
     public DateTime ProcessStart { get; init; }
     public StartupPhases Phases { get; init; } = new();

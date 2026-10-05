@@ -1,6 +1,6 @@
 # Mortar SMAPI Bridge
 
-C# SMAPI mod (net6.0) that lets Mortar send console commands. Compiles against `StardewModdingAPI.dll`, `SMAPI.Toolkit.CoreInterfaces.dll` (LGPL) and SMAPI's bundled `0Harmony.dll` (MIT), none of them shipped; never reference or ship game assemblies.
+C# SMAPI mod (net6.0) that lets Mortar send console commands: the SMAPI loader's companion, not a Stardew-only tool (BepInEx games use mortar-bepinex-bridge). Compiles against `StardewModdingAPI.dll`, `SMAPI.Toolkit.CoreInterfaces.dll` (LGPL) and SMAPI's bundled `0Harmony.dll` (MIT), none of them shipped; never reference or ship game assemblies.
 
 - Build, test, SMAPI dll override, versioning and release: [HUMANS.md](HUMANS.md).
 - Command protocol, discovery file and overlay contract: [README.md](README.md).

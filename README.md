@@ -8,7 +8,7 @@
 
 ---
 
-A SMAPI mod that lets the [Mortar](https://github.com/Rethunk-Tech/mortar) mod manager send console commands to a running Stardew Valley. Mortar starts the game through its launcher (Steam, GOG, Heroic or Lutris) and reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
+The SMAPI loader's companion for the [Mortar](https://github.com/Rethunk-Tech/mortar) mod manager: a SMAPI mod that lets Mortar send console commands to a running SMAPI game (Stardew Valley today). Games on other loaders have their own companion, such as [mortar-bepinex-bridge](https://github.com/Rethunk-Tech/mortar-bepinex-bridge) for BepInEx. Mortar starts the game through its launcher (Steam, GOG, Heroic or Lutris) and reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
 
 ## Quick start
 

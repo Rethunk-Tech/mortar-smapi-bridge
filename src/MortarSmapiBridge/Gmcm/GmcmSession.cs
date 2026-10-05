@@ -145,10 +145,12 @@ internal sealed class GmcmSession
 
             foreach (object modConfig in GmcmReflection.Enumerate(all))
             {
+                // One mod's menu failing to read (its own getter throwing, a texture it cannot load) says nothing
+                // about GMCM's internals, so only that mod is left out of the capture.
                 if (!TryCaptureOne(modConfig, gmcmVersion ?? "", capturedAt, gmcmDir, out GmcmModIdentity? entry, out string? error))
                 {
-                    Disable(error ?? "capturing a mod config", null);
-                    return;
+                    _monitor.Log("GMCM capture skipped " + error, LogLevel.Trace);
+                    continue;
                 }
 
                 if (entry != null)
@@ -163,16 +165,18 @@ internal sealed class GmcmSession
         }
     }
 
-    private bool TryCaptureOne(object modConfig, string gmcmVersion, DateTimeOffset capturedAt, string gmcmDir, out GmcmModIdentity? entry, out string? error)
+    internal static bool TryCaptureOne(object modConfig, string gmcmVersion, DateTimeOffset capturedAt, string gmcmDir, out GmcmModIdentity? entry, out string? error)
     {
         entry = null;
         error = null;
+        string label = "a mod";
         try
         {
             object? manifest = GmcmReflection.GetMemberValue(modConfig, "ModManifest")
                 ?? throw new InvalidOperationException("ModConfig.ModManifest");
             string id = GmcmReflection.GetMemberValue(manifest, "UniqueID")?.ToString()
                 ?? throw new InvalidOperationException("IManifest.UniqueID");
+            label = id;
             string name = GmcmReflection.GetMemberValue(manifest, "Name")?.ToString() ?? id;
             string version = GmcmReflection.GetMemberValue(manifest, "Version")?.ToString() ?? "";
 
@@ -188,7 +192,7 @@ internal sealed class GmcmSession
         }
         catch (Exception ex)
         {
-            error = "capturing ModConfig (" + ex.Message + ")";
+            error = label + ": " + ex.GetType().Name + ": " + ex.Message;
             return false;
         }
     }

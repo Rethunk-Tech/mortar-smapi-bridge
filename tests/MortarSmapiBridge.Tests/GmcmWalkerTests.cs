@@ -13,6 +13,26 @@ namespace MortarSmapiBridge.Tests
 public sealed class GmcmWalkerTests
 {
     [Fact]
+    public void CaptureOfOneBrokenModNamesItAndWritesNothing()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            object broken = new { ModManifest = new { UniqueID = "broken.Mod", Name = "Broken", Version = "1.0.0" } };
+            bool ok = GmcmSession.TryCaptureOne(broken, "1.12.0", DateTimeOffset.UtcNow, dir, out GmcmModIdentity? entry, out string? error);
+            Assert.False(ok);
+            Assert.Null(entry);
+            Assert.StartsWith("broken.Mod: InvalidOperationException", error);
+            Assert.Empty(Directory.GetFiles(dir));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void WalksRegistrationOrderAndNullsGuidFieldIds()
     {
         ModConfig config = SampleConfig();

@@ -55,8 +55,10 @@ internal static class GmcmApply
         foreach (object option in options)
             GmcmReflection.TryInvoke(option, "BeforeSave", out _);
 
-        if (!GmcmReflection.TryInvoke(modConfig, "Save", out _))
+        // GMCM keeps the mod's save callback as an Action property, not a method.
+        if (GmcmReflection.GetMemberValue(modConfig, "Save") is not Delegate save)
             throw new InvalidOperationException("ModConfig.Save");
+        save.DynamicInvoke();
 
         foreach (object option in options)
             GmcmReflection.TryInvoke(option, "AfterSave", out _);

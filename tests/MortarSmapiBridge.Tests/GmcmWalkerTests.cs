@@ -301,9 +301,11 @@ public sealed class GmcmWalkerTests
         public Manifest ModManifest { get; set; } = new();
         public bool DefaultTitleScreenOnly { get; set; }
         public Dictionary<string, ModConfigPage> Pages { get; set; } = [];
+        public ModConfig() => Save = () => SaveLog.Add("save");
+
         public List<string> SaveLog { get; } = [];
 
-        public void Save() => SaveLog.Add("save");
+        public Action Save { get; }
     }
 
     public sealed class ModConfigPage

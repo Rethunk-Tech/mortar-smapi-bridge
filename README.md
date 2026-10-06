@@ -21,7 +21,7 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 ## Highlights
 
 - Loopback TCP command channel: one connection per SMAPI console line, authenticated with a per-run token
-- Writes `mortar-smapi-bridge.json` (`port`, `token`, `pid`) in the mod folder and deletes it on exit
+- Writes `mortar-smapi-bridge.json` (`port`, `token`) in the mod folder and deletes it on exit
 - Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
 - Command channel runs on SMAPI 4.5 and later 4.x; the overlay runs on Stardew Valley 1.6.14 up to, but not including, 1.7. The two gates are independent: either can be off while the other runs.
 - [GMCM menu capture](#gmcm-menu-capture): each mod's Generic Mod Config Menu options as JSON, and edits from Mortar applied back
@@ -43,7 +43,7 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 On launch the mod listens on `127.0.0.1` (port chosen by the OS) and writes `mortar-smapi-bridge.json` in its own folder:
 
 ```json
-{"port":51234,"token":"<64 hex chars>","pid":4242}
+{"port":51234,"token":"<64 hex chars>"}
 ```
 
 The file is restricted to the current user (mode 0600 on Linux and macOS) and deleted on exit. Every request must carry the random 32-byte token, compared in constant time.

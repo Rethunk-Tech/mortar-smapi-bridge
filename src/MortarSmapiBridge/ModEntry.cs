@@ -49,7 +49,7 @@ public sealed class ModEntry : Mod
         this.Server.Start();
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
-        Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token, pid = Environment.ProcessId }), Files.Restrict);
+        Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token }), Files.Restrict);
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }
 

@@ -4,11 +4,12 @@ using System.Text;
 
 namespace MortarSmapiBridge;
 
-/// <summary>Loopback-only TCP server: one connection per command, <c>token\ncommand\n</c> in, <c>ok\n</c> or <c>error: msg\n</c> out.</summary>
+/// <summary>Loopback-only TCP server: one connection per command, <c>token\ncommand\n</c> in, <c>ok\n</c>, <c>ok {json}\n</c> for a query or <c>error: msg\n</c> out.</summary>
 /// <param name="token">The shared secret clients must present.</param>
 /// <param name="submit">Queues a validated command line; returns an error message, or null on success.</param>
 /// <param name="trace">Logs a received command.</param>
-internal sealed class BridgeServer(string token, Func<string, string?> submit, Action<string> trace) : IDisposable
+/// <param name="query">Answers a line that asks a question instead of running a command with JSON, or null when it is not one.</param>
+internal sealed class BridgeServer(string token, Func<string, string?> submit, Action<string> trace, Func<string, string?> query) : IDisposable
 {
     public const int MaxCommandBytes = 4096;
     private const int MaxTokenBytes = 128;
@@ -19,6 +20,7 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
     private readonly string Token = token;
     private readonly Func<string, string?> Submit = submit;
     private readonly Action<string> Trace = trace;
+    private readonly Func<string, string?> Query = query;
 
     public int Port => ((IPEndPoint)this.Listener.LocalEndpoint).Port;
 
@@ -83,6 +85,8 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
         if (!CommandLine.TryParse(line, out _, out _, out string error))
             return "error: " + error;
 
+        if (this.Query(line) is { } answer)
+            return "ok " + answer;
         this.Trace(line);
         string? failure = this.Submit(line);
         return failure == null ? "ok" : "error: " + failure;

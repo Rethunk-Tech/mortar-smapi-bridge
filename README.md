@@ -25,6 +25,7 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
 - Command channel runs on SMAPI 4.5 and later 4.x; the overlay runs on Stardew Valley 1.6.14 up to, but not including, 1.7. The two gates are independent: either can be off while the other runs.
 - [GMCM menu capture](#gmcm-menu-capture): each mod's Generic Mod Config Menu options as JSON, and edits from Mortar applied back
+- [Frame timings](#frame-timings): on request, each mod's time in the per-frame SMAPI events per frame (average, 95th percentile, peak, share of the frame) and the frame time without them
 - [Startup timings](#startup-timings): per-mod time from launch to the title screen, and the game methods each mod's Harmony patches can replace
 
 
@@ -57,7 +58,7 @@ One connection per command. The client sends two LF-terminated lines:
 <command line>
 ```
 
-The mod replies with one line and closes: `ok` or `error: <message>`.
+The mod replies with one line and closes: `ok`, `ok <json>` for a question (`perf`, `perf start`: see [Frame timings](#frame-timings)) or `error: <message>`.
 
 The command line is parsed quote-aware (double quotes group, backslash escapes) and must be non-empty; the limit is 4096 bytes. The token line is limited to 128 bytes.
 
@@ -138,6 +139,24 @@ On unless `StartupTimings` is `false` in `config.json`, and only inside a Mortar
   ```
 
 - **`replaces`:** read from Harmony's patch registry as the report is written. Per Harmony ID (by convention the mod's UniqueID; the bridge's own IDs are left out), the methods it can replace outright: transpilers, and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
+
+## Frame timings
+
+Off until Mortar asks, and nothing is wrapped before then. `perf start` (the protocol's second kind of line, answered `ok {"measured":true}`) begins a window on the game's next update tick: every mod's handlers of the per-frame events (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and their World, ActiveMenu, Hud and Step variants) are swapped for timed delegates, the same swap the startup timing uses, so a mod that removes its own handler still can. A window lasts ten minutes at most; the wrappers come off then and the last summary stays. `perf start` again restarts it.
+
+- **Why not SMAPI's own monitor:** its `performance` counters keep a rolling average and peak per mod and event, with no 95th percentile and no share of the frame, so the handlers are timed here.
+- **Frame:** from one `UpdateTicking` to the next, so it includes the time the game waits for vsync. A mod's cost in a frame is the sum of its timed handlers in that frame; the bridge's own handlers are left out.
+- **`perf`:** the summary, rebuilt once a second:
+
+  ```text
+  ok {measured, seconds, frames, fps,
+      frameMs: {avg, p50, p95, p99, max},
+      monoUsedBytes, monoHeapBytes, gcCollections,       (managed heap here)
+      baseline: {frameMs, modsMs, withoutModsMs},
+      plugins: [{guid: <UniqueID>, msPerFrame, p95Ms, peakMs, share, callsPerFrame}, ...]}
+  ```
+
+  `msPerFrame` averages over every frame, so a mod that ran in few frames has a small average and a high peak; `p95Ms` is the 95th percentile of its per-frame cost over all frames (zero for a mod that ran in fewer than 5% of them), with about 10% resolution; `share` is `msPerFrame` over the average frame. `baseline.withoutModsMs` is the average frame less the mods' timed handlers: the game, SMAPI and everything a mod does outside an event (Harmony patches, content edits) in one number. It is not a measurement with no mods loaded; profile an empty profile for that.
 
 ## Documentation
 

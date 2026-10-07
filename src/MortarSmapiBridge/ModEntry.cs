@@ -5,6 +5,7 @@ using System.Text.Json;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using MortarSmapiBridge.Gmcm;
+using MortarSmapiBridge.Perf;
 using MortarSmapiBridge.Startup;
 
 namespace MortarSmapiBridge;
@@ -14,6 +15,7 @@ public sealed class ModEntry : Mod
     private const string StateFileName = "mortar-smapi-bridge.json";
 
     private BridgeServer? Server;
+    private FrameProfiler? Profiler;
     private OverlayServer? Overlay;
     private IModHelper? OverlayHelper;
     private readonly HashSet<string> OverlayReadErrors = [];
@@ -26,6 +28,7 @@ public sealed class ModEntry : Mod
         ModConfig config = helper.ReadConfig<ModConfig>();
         StartupSession.Start(helper, this.Monitor, this.ModManifest, config);
         new GmcmSession(helper, this.Monitor, config).Attach();
+        this.Profiler = new FrameProfiler(helper, this.Monitor, this.ModManifest.UniqueID);
         AppDomain.CurrentDomain.ProcessExit += (_, _) => this.Shutdown();
         // The overlay only reads game state, so it has its own game-version gate and does not depend on the command
         // channel's SMAPI checks below.
@@ -45,7 +48,7 @@ public sealed class ModEntry : Mod
         }
 
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
-        this.Server = new BridgeServer(token, this.Submit, line => this.Monitor.Log($"Command received: {line}", LogLevel.Trace));
+        this.Server = new BridgeServer(token, this.Submit, line => this.Monitor.Log($"Command received: {line}", LogLevel.Trace), this.Answer);
         this.Server.Start();
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
@@ -59,6 +62,14 @@ public sealed class ModEntry : Mod
             this.Shutdown();
         base.Dispose(disposing);
     }
+
+    // The questions Mortar asks the running game; anything else is a console command.
+    private string? Answer(string line) => line switch
+    {
+        "perf" => this.Profiler?.Reply(false),
+        "perf start" => this.Profiler?.Reply(true),
+        _ => null,
+    };
 
     private string? Submit(string line)
     {

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Reflection;
 using HarmonyLib;
 using StardewModdingAPI;
@@ -9,10 +10,13 @@ namespace MortarSmapiBridge.Startup;
 /// <summary>Swaps each SMAPI event handler's delegate for a timed one. SMAPI's ManagedEvent keeps its handlers in a
 /// private list of ManagedEventHandler objects and raises through each object's Handler, so replacing the delegate in
 /// place covers cached handler arrays too.</summary>
-internal sealed class EventTiming
+/// <param name="include">Which events to wrap, by SMAPI's name for them; all of them when null.</param>
+/// <param name="record">Receives each call's mod, event and elapsed Stopwatch ticks; when null the calls are charged to
+/// the startup clock, exclusive of the timed calls nested inside them.</param>
+internal sealed class EventTiming(Func<string, bool>? include = null, Action<string, string, long>? record = null)
 {
     private const BindingFlags Instance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-    private static readonly MethodInfo WrapMethod = typeof(EventTiming).GetMethod(nameof(Wrap), BindingFlags.Static | BindingFlags.NonPublic)!;
+    private static readonly MethodInfo WrapMethod = typeof(EventTiming).GetMethod(nameof(Wrap), BindingFlags.Instance | BindingFlags.NonPublic)!;
 
     private readonly List<(string Name, IList Handlers)> events = [];
     private int[] counts = [];
@@ -36,7 +40,7 @@ internal sealed class EventTiming
         foreach (FieldInfo field in manager.GetType().GetFields(Instance))
         {
             object? managed = field.GetValue(manager);
-            if (managed?.GetType().GetField("Handlers", Instance)?.GetValue(managed) is IList handlers)
+            if ((include == null || include(field.Name)) && managed?.GetType().GetField("Handlers", Instance)?.GetValue(managed) is IList handlers)
             {
                 this.events.Add((field.Name, handlers));
                 if (!this.eventTypes.Contains(managed.GetType()))
@@ -94,7 +98,7 @@ internal sealed class EventTiming
                 if (field?.GetValue(handler) is not Delegate original || type.GetProperty("SourceMod")?.GetValue(handler) is not IModInfo mod)
                     continue;
                 Type args = original.GetType().GetGenericArguments()[0];
-                Delegate timed = (Delegate)WrapMethod.MakeGenericMethod(args).Invoke(null, [original, mod.Manifest.UniqueID, name])!;
+                Delegate timed = (Delegate)WrapMethod.MakeGenericMethod(args).Invoke(this, [original, mod.Manifest.UniqueID, name])!;
                 wrapped[original] = (handler, field);
                 field.SetValue(handler, timed);
                 this.originals.Add((handler, field, original));
@@ -105,13 +109,33 @@ internal sealed class EventTiming
     internal void Restore()
     {
         foreach ((object handler, FieldInfo field, Delegate original) in this.originals)
+        {
             field.SetValue(handler, original);
+            wrapped.TryRemove(original, out _);
+        }
         this.originals.Clear();
-        wrapped.Clear();
+        this.seen.Clear();
+        Array.Clear(this.counts);
     }
 
-    private static EventHandler<T> Wrap<T>(EventHandler<T> inner, string mod, string eventName) =>
-        (sender, args) =>
+    private EventHandler<T> Wrap<T>(EventHandler<T> inner, string mod, string eventName)
+    {
+        if (record != null)
+        {
+            return (sender, args) =>
+            {
+                long start = Stopwatch.GetTimestamp();
+                try
+                {
+                    inner(sender, args);
+                }
+                finally
+                {
+                    record(mod, eventName, Stopwatch.GetTimestamp() - start);
+                }
+            };
+        }
+        return (sender, args) =>
         {
             StartupClock.Frame? frame = StartupClock.Begin(mod, eventName);
             try
@@ -123,4 +147,5 @@ internal sealed class EventTiming
                 StartupClock.End(frame);
             }
         };
+    }
 }

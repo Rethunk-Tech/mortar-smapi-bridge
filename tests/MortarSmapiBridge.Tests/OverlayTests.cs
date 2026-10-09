@@ -30,6 +30,18 @@ public class OverlayTests
     }
 
     [Fact]
+    public async Task TooManyHeaderLinesAreRejectedBeforeAuth()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+
+        string headers = string.Join("\r\n", Enumerable.Range(0, 100).Select(i => $"X-Filler-{i}: x"));
+        Assert.Contains(" 431 ", await Request(port, "/state", headers + "\r\nAuthorization: Bearer overlay-token"));
+    }
+
+    [Fact]
     public async Task BearerTokenReturnsSnapshotJson()
     {
         int port = GetFreePort();

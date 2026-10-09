@@ -10,6 +10,7 @@ internal sealed class OverlayServer : IDisposable
 {
     private const int MaxRequestLineBytes = 4096;
     private const int MaxHeaderLineBytes = 4096;
+    private const int MaxHeaderLines = 32;
     private static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(5);
 
     private readonly TcpListener Listener;
@@ -101,8 +102,11 @@ internal sealed class OverlayServer : IDisposable
             return Response(400, "{\"error\":\"bad request\"}");
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        while (true)
+        for (int count = 0; ; count++)
         {
+            if (count > MaxHeaderLines)
+                return Response(431, "{\"error\":\"too many headers\"}");
+
             string? line = await CommandLine.ReadLine(stream, MaxHeaderLineBytes, cancel);
             if (line == null)
                 return Response(400, "{\"error\":\"bad request\"}");
@@ -175,6 +179,7 @@ internal sealed class OverlayServer : IDisposable
             401 => "Unauthorized",
             404 => "Not Found",
             405 => "Method Not Allowed",
+            431 => "Request Header Fields Too Large",
             503 => "Service Unavailable",
             _ => "Error"
         };

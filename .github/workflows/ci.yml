@@ -76,3 +76,63 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes \
             "dist/MortarSmapiBridge-$version.zip" "dist/MortarSmapiBridge-$version.zip.sha256"
+
+  # The mod sites take the zip the release job attached, so every site carries the same file.
+  nexus:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch the release zip
+        id: zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "MortarSmapiBridge-$version.zip"
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+      - name: Upload to Nexus Mods (Stardew Valley mod 53964)
+        uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2  # v1.0.0-beta.11
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          mod_id: 53964
+          file_id: 186981
+          filename: MortarSmapiBridge-${{ steps.zip.outputs.version }}.zip
+          version: ${{ steps.zip.outputs.version }}
+          display_name: Mortar SMAPI Bridge
+          archive_existing_version: true
+          update_mod_version: true
+          changelog: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+
+  curseforge:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Upload to CurseForge (project 1747618)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "MortarSmapiBridge-$version.zip"
+          api=https://stardewvalley.curseforge.com/api
+          # Every Stardew 1.6 release from the manifest's MinimumGameVersion (1.6.14) on, so new game versions are picked up.
+          curl -fsS --config <(printf 'header = "X-Api-Token: %s"\n' "$CURSEFORGE_TOKEN") "$api/game/versions" >versions.json
+          metadata="$(python3 - "$version" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" <<'PY'
+          import json, sys
+          def key(name):
+              try:
+                  return tuple(int(p) for p in name.strip().split("."))
+              except ValueError:
+                  return None
+          ids = [v["id"] for v in json.load(open("versions.json")) if (k := key(v["name"])) and len(k) == 3 and k[:2] == (1, 6) and k >= (1, 6, 14)]
+          if not ids:
+              sys.exit("no Stardew 1.6.14+ game versions on CurseForge")
+          print(json.dumps({"changelog": sys.argv[2], "changelogType": "text", "displayName": f"Mortar SMAPI Bridge {sys.argv[1]}", "gameVersions": ids, "releaseType": "release"}))
+          PY
+          )"
+          curl -fsS --config <(printf 'header = "X-Api-Token: %s"\n' "$CURSEFORGE_TOKEN") \
+            -F "metadata=$metadata" -F "file=@MortarSmapiBridge-$version.zip" "$api/projects/1747618/upload-file"

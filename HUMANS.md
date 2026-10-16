@@ -25,6 +25,6 @@ Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarS
 
 `MinimumApiVersion` is the lowest SMAPI whose internals the reflection lookup matches. SMAPI has no maximum-version field, so `ApiRange` in the mod accepts any SMAPI 4.x from 4.5 and turns the command channel off on other majors at startup; raise it only after re-verifying `SCore.RawCommandQueue` on the new major.
 
-## Nexus Mods
+## Mod sites
 
-The release zip is in the layout Nexus and SMAPI expect (one `MortarSmapiBridge/` folder with `manifest.json` and the dll). Page description text: the README's "Nexus page description" section. Add `"Nexus:<mod id>"` to `UpdateKeys` in `manifest.template.json` (SMAPI checks every listed key). Permissions to set on the page: open source under AGPL-3.0, others may modify and redistribute with the licence retained; credit SMAPI (Pathoschild, LGPL-3.0) as the API the mod builds against.
+A `v*` tag's release also goes to Nexus Mods (Stardew Valley mod 53964, file 186981, through `Nexus-Mods/upload-action` with the `NEXUSMODS_API_KEY` secret) and CurseForge (project 1747618, with the `CURSEFORGE_TOKEN` author token, tagged with every Stardew 1.6 version from 1.6.14). ModDrop has no upload API, so its listing is updated by hand. Every site gets the release zip: one `MortarSmapiBridge/` folder with `manifest.json` and the dll. The manifest's `UpdateKeys` list GitHub and `Nexus:53964`. Page permissions: open source under AGPL-3.0, others may modify and redistribute with the licence retained; credit SMAPI (Pathoschild, LGPL-3.0) as the API the mod builds against.

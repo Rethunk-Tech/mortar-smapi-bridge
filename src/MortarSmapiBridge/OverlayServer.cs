@@ -145,9 +145,16 @@ internal sealed class OverlayServer : IDisposable
         string[] parts = requestLine.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 3)
             return Response(400, "{\"error\":\"bad request\"}");
+        bool options = string.Equals(parts[0], "OPTIONS", StringComparison.Ordinal);
         bool head = string.Equals(parts[0], "HEAD", StringComparison.Ordinal);
+        if (options)
+        {
+            if (!string.Equals(GetPath(parts[1]), "/state", StringComparison.Ordinal))
+                return Response(404, "{\"error\":\"not found\"}");
+            return Response(204, "", "Allow: GET, HEAD, OPTIONS\r\nAccess-Control-Allow-Headers: Authorization\r\n");
+        }
         if (!head && !string.Equals(parts[0], "GET", StringComparison.Ordinal))
-            return Response(405, "{\"error\":\"method not allowed\"}", "Allow: GET, HEAD\r\n");
+            return Response(405, "{\"error\":\"method not allowed\"}", "Allow: GET, HEAD, OPTIONS\r\n");
         if (!string.Equals(GetPath(parts[1]), "/state", StringComparison.Ordinal))
             return Response(404, "{\"error\":\"not found\"}", head: head);
 
@@ -234,6 +241,7 @@ internal sealed class OverlayServer : IDisposable
         string reason = status switch
         {
             200 => "OK",
+            204 => "No Content",
             400 => "Bad Request",
             401 => "Unauthorized",
             404 => "Not Found",

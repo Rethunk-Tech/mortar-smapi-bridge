@@ -59,7 +59,24 @@ public class OverlayTests
         Assert.Equal("", head[headBody..]);
         Assert.Contains($"Content-Length: {getBytes.Length}", head);
         Assert.Contains(" 405 ", await Request(port, "/state", "Authorization: Bearer overlay-token", "POST"));
-        Assert.Contains("Allow: GET, HEAD", await Request(port, "/state", "Authorization: Bearer overlay-token", "POST"));
+        Assert.Contains("Allow: GET, HEAD, OPTIONS", await Request(port, "/state", "Authorization: Bearer overlay-token", "POST"));
+    }
+
+    [Fact]
+    public async Task OptionsStateIsUnauthenticatedNoContent()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+
+        string response = await Request(port, "/state", method: "OPTIONS");
+        int bodyStart = response.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4;
+        Assert.Contains(" 204 ", response);
+        Assert.Equal("", response[bodyStart..]);
+        Assert.Contains("Allow: GET, HEAD, OPTIONS", response);
+        Assert.Contains("Access-Control-Allow-Headers: Authorization", response);
+        Assert.Contains(" 404 ", await Request(port, "/other", method: "OPTIONS"));
     }
 
     [Fact]

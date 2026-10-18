@@ -4,7 +4,7 @@ How to build, test and install the mod. What it does: [README.md](README.md); ru
 
 ## Build and test
 
-Requires the .NET SDK 8 or later (output targets net6.0).
+Requires the .NET SDK 10 or later (output targets net6.0).
 
 ```sh
 dotnet build -c Release   # fetches and sha256-verifies SMAPI 4.5.2's StardewModdingAPI.dll, SMAPI.Toolkit.CoreInterfaces.dll and 0Harmony.dll into lib/
@@ -15,7 +15,7 @@ The SMAPI version and its file hashes are pinned in `scripts/fetch-smapi.sh`, wh
 
 `gate` from the repo root is the offline gate. `lefthook install` sets up the git hooks (needs `lefthook` and `gitleaks` on PATH): pre-commit scans staged changes for secrets, pre-push runs `gate`.
 
-To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll" -p:SmapiCoreInterfacesDll="/path/to/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" -p:HarmonyDll="/path/to/smapi-internal/0Harmony.dll"`. The fetch is skipped when the first two exist, so all three must be passed.
+To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll" -p:SmapiCoreInterfacesDll="/path/to/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" -p:HarmonyDll="/path/to/smapi-internal/0Harmony.dll"`. The fetch is skipped iff all three HintPaths exist, so all three must be passed.
 
 Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`. Overlay `config.json` and HTTP contract: [README.md](README.md#stream-overlay).
 
@@ -23,7 +23,7 @@ Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarS
 
 `<Version>` in `src/MortarSmapiBridge/MortarSmapiBridge.csproj` is the only place the version is written. It sets the assembly version and generates the shipped `manifest.json` from `manifest.template.json`. To release: bump `<Version>`, commit, tag `v<version>`. CI fails the release if the tag differs from `<Version>`, names the zip from it, and publishes GitHub-generated notes.
 
-`MinimumApiVersion` is the lowest SMAPI whose internals the reflection lookup matches. SMAPI has no maximum-version field, so `ApiRange` in the mod accepts any SMAPI 4.x from 4.5 and turns the command channel off on other majors at startup; raise it only after re-verifying `SCore.RawCommandQueue` on the new major.
+`MinimumApiVersion` is the lowest SMAPI whose internals the reflection lookup matches. SMAPI has no maximum-version field, so `ApiRange` in the mod accepts any SMAPI 4.x from 4.5.2 and turns the command channel off on other majors at startup; raise it only after re-verifying `SCore.RawCommandQueue` on the new major.
 
 ## Mod sites
 

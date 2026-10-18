@@ -151,7 +151,7 @@ internal sealed class OverlayServer : IDisposable
         {
             if (!string.Equals(GetPath(parts[1]), "/state", StringComparison.Ordinal))
                 return Response(404, "{\"error\":\"not found\"}");
-            return Response(204, "", "Allow: GET, HEAD, OPTIONS\r\nAccess-Control-Allow-Headers: Authorization\r\n");
+            return Response(204, "", "Allow: GET, HEAD, OPTIONS\r\nAccess-Control-Allow-Headers: Authorization\r\nAccess-Control-Allow-Methods: GET, HEAD\r\n");
         }
         if (!head && !string.Equals(parts[0], "GET", StringComparison.Ordinal))
             return Response(405, "{\"error\":\"method not allowed\"}", "Allow: GET, HEAD, OPTIONS\r\n");

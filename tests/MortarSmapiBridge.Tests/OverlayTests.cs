@@ -76,6 +76,7 @@ public class OverlayTests
         Assert.Equal("", response[bodyStart..]);
         Assert.Contains("Allow: GET, HEAD, OPTIONS", response);
         Assert.Contains("Access-Control-Allow-Headers: Authorization", response);
+        Assert.Contains("Access-Control-Allow-Methods: GET, HEAD", response);
         Assert.Contains(" 404 ", await Request(port, "/other", method: "OPTIONS"));
     }
 

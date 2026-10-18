@@ -76,14 +76,15 @@ Overlay mode is off by default. Set `OverlayEnabled` to `true` in `config.json`,
 }
 ```
 
-The token is persistent, separate from the command token, and the config file is restricted to the current user. On Stardew Valley 1.6.14 and later 1.6.x the loopback-only listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same response without a body. Other methods return 405. Authenticate with `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. A request that does not finish within 5 seconds is dropped. After the first one-second tick with no save loaded, the body is `{"inGame":false}`. Before that tick, or after a snapshot read failure, it is 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). Replies send `Access-Control-Allow-Origin: *`; `OPTIONS` is not served. The listener only serves this read-only endpoint; it has no path to the command queue.
+The token is persistent, separate from the command token, and the config file is restricted to the current user. On Stardew Valley 1.6.14 and later 1.6.x the loopback-only listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same response without a body. Unauthenticated `OPTIONS /state` returns 204 with `Allow: GET, HEAD, OPTIONS` and `Access-Control-Allow-Headers: Authorization` so a browser preflight can learn GET is allowed. Other methods return 405 with the same `Allow`. Authenticate with `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. A request that does not finish within 5 seconds is dropped. After the first one-second tick with no save loaded, the body is `{"inGame":false}`. Before that tick, or after a snapshot read failure, it is 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). Replies send `Access-Control-Allow-Origin: *`. The listener only serves this read-only endpoint; it has no path to the command queue.
 
 The snapshot is collected on SMAPI's game thread and the listener serves the last snapshot. Game state is only read when SMAPI reports the world is ready (`Context.IsWorldReady`). A snapshot read failure is logged once per distinct error message. If the game version is outside 1.6.14 to 1.6.x, the overlay stays off and logs a warning; the command channel remains available.
 
-A small OBS browser-source example is in [`examples/overlay/index.html`](examples/overlay/index.html). Open it with `?token=...&port=...`. With no `field`, it shows the full snapshot. Add `field=<name>` for one value per browser source. Add `label=1` to prefix a short label. Style in OBS Custom CSS using the element `id` and `class` for that value (`#player` / `.player`, `#skill-farming` / `.skill.farming`; `field=skill.farming` uses `#skill-farming`). While not in game, or if the bridge is unreachable or errors, the page is blank (a console message once per state change).
+A small OBS browser-source example is in [`examples/overlay/index.html`](examples/overlay/index.html). Open it with `?token=...&port=...`. With no `field`, it shows the full snapshot. Add `field=<name>` for one value per browser source. Add `label=1` to prefix a short label. Style in OBS Custom CSS using the element `id` and `class` for that value (`#player` / `.player`, `#skill-farming` / `.skill.farming`; `field=skill.farming` uses `#skill-farming`). While not in game the page is blank except `field=inGame`, which shows `true` or `false`. If the bridge is unreachable or errors, the page is blank (a console message once per state change).
 
 | `field` | Shown as |
 | --- | --- |
+| `inGame` | `true` or `false` |
 | `location` | location name |
 | `player` | player name |
 | `season` | season |
@@ -147,14 +148,14 @@ Off until Mortar asks, and nothing is wrapped before then. `perf start` (the pro
 - **`perf`:** the summary, rebuilt once a second:
 
   ```text
-  ok {measured, seconds, frames, fps,
+  ok {measured, active, seconds, frames, fps,
       frameMs: {avg, p50, p95, p99, max},
       monoUsedBytes, monoHeapBytes, gcCollections,       (managed heap here)
       baseline: {frameMs, modsMs, withoutModsMs},
       plugins: [{guid: <UniqueID>, msPerFrame, p95Ms, peakMs, share, callsPerFrame}, ...]}
   ```
 
-  `msPerFrame` averages over every frame, so a mod that ran in few frames has a small average and a high peak; `p95Ms` is the 95th percentile of its per-frame cost over all frames (zero for a mod that ran in fewer than 5% of them), with about 10% resolution; `share` is `msPerFrame` over the average frame. `baseline.withoutModsMs` is the average frame less the mods' timed handlers: the game, SMAPI and everything a mod does outside an event (Harmony patches, content edits) in one number. It is not a measurement with no mods loaded; profile an empty profile for that.
+  `measured` stays true on every summary. `active` is true only while a window is running; it is false on the empty summary and after `perf stop`. `msPerFrame` averages over every frame, so a mod that ran in few frames has a small average and a high peak; `p95Ms` is the 95th percentile of its per-frame cost over all frames (zero for a mod that ran in fewer than 5% of them), with about 10% resolution; `share` is `msPerFrame` over the average frame. `baseline.withoutModsMs` is the average frame less the mods' timed handlers: the game, SMAPI and everything a mod does outside an event (Harmony patches, content edits) in one number. It is not a measurement with no mods loaded; profile an empty profile for that.
 
 ## Documentation
 

@@ -150,6 +150,8 @@
             return `${data.health}/${data.maxHealth}`;
           case "stamina":
             return `${Math.round(data.stamina)}/${data.maxStamina}`;
+          case "inGame":
+            return data.inGame ? "true" : "false";
           default:
             if (name.startsWith("skill.")) {
               const skill = name.slice("skill.".length);
@@ -219,7 +221,7 @@
           const response = await fetch(endpoint, { cache: "no-store" });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
-          if (!data.inGame) {
+          if (!data.inGame && field !== "inGame") {
             hide();
             logOnce("idle", "overlay: not in game");
             return;

@@ -241,6 +241,25 @@ public sealed class GmcmWalkerTests
         Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
     }
 
+    [Fact]
+    public void AtomicWriteRemovesTheTempFileWhenRestrictThrows()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "secret.json");
+            Assert.Throws<IOException>(() =>
+                Files.AtomicWrite(path, "token", _ => throw new IOException("restrict failed")));
+            Assert.False(File.Exists(path));
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
     private static ModConfig SampleConfig()
     {
         ColorPickerOption colorPicker = new()

@@ -9,13 +9,27 @@ internal static class Files
     internal static void AtomicWrite(string path, string contents, Action<string>? restrict = null)
     {
         string temp = path + ".tmp";
-        if (restrict != null)
+        try
         {
-            File.WriteAllText(temp, "");
-            restrict(temp);
+            if (restrict != null)
+            {
+                File.WriteAllText(temp, "");
+                restrict(temp);
+            }
+            File.WriteAllText(temp, contents);
+            File.Move(temp, path, overwrite: true);
         }
-        File.WriteAllText(temp, contents);
-        File.Move(temp, path, overwrite: true);
+        catch
+        {
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (Exception)
+            {
+            }
+            throw;
+        }
     }
 
     internal static void Restrict(string path)
@@ -33,20 +47,45 @@ internal static class Files
     private static void RestrictWindows(string path)
     {
         string account = Environment.UserDomainName + "\\" + Environment.UserName;
-        using var process = Process.Start(new ProcessStartInfo
+        var start = new ProcessStartInfo
         {
-            FileName = "icacls",
-            Arguments = $"\"{path}\" /inheritance:r /grant:r \"{account}:(F)\"",
+            FileName = Path.Combine(Environment.SystemDirectory, "icacls.exe"),
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true
-        });
+        };
+        start.ArgumentList.Add(path);
+        start.ArgumentList.Add("/inheritance:r");
+        start.ArgumentList.Add("/grant:r");
+        start.ArgumentList.Add(account + ":(F)");
+        using var process = Process.Start(start);
         if (process == null)
             throw new IOException($"Could not restrict permissions on {path}.");
+        Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+        Task<string> stderr = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(10_000))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            try
+            {
+                Task.WhenAll(stdout, stderr).GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+            }
+            throw new IOException($"Could not restrict permissions on {path}: timed out.");
+        }
         process.WaitForExit();
         if (process.ExitCode != 0)
-            throw new IOException($"Could not restrict permissions on {path}: {process.StandardError.ReadToEnd().Trim()}");
+            throw new IOException($"Could not restrict permissions on {path}: {stderr.GetAwaiter().GetResult().Trim()}");
+        _ = stdout.GetAwaiter().GetResult();
     }
 
     [DllImport("libc", SetLastError = true)]

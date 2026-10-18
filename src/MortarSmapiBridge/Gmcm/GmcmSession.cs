@@ -101,10 +101,9 @@ internal sealed class GmcmSession
             if (!name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            string uniqueId = Path.GetFileNameWithoutExtension(name);
             try
             {
-                ApplyOne(path, uniqueId, configs);
+                ApplyOne(path, configs);
             }
             catch (Exception ex)
             {
@@ -197,10 +196,13 @@ internal sealed class GmcmSession
         }
     }
 
-    private void ApplyOne(string pendingPath, string uniqueId, Dictionary<string, object> configs)
+    internal static void ApplyOne(string pendingPath, Dictionary<string, object> configs)
     {
         string json = File.ReadAllText(pendingPath);
         GmcmPendingFile? pending = JsonSerializer.Deserialize<GmcmPendingFile>(json, JsonOptions);
+        string uniqueId = pending != null && !string.IsNullOrEmpty(pending.UniqueId)
+            ? pending.UniqueId
+            : Path.GetFileNameWithoutExtension(pendingPath);
         if (pending == null)
         {
             WriteResult(pendingPath, new GmcmPendingResultFile

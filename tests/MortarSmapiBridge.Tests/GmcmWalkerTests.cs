@@ -208,6 +208,28 @@ public sealed class GmcmWalkerTests
     }
 
     [Fact]
+    public void ApplyUsesUniqueIdInPendingJsonNotTheSanitizedFileName()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string id = "Foo.Bar:Mod";
+            string path = Path.Combine(dir, GmcmSession.SafeFileName(id) + ".json");
+            Files.AtomicWrite(path, JsonSerializer.Serialize(new GmcmPendingFile { UniqueId = id }, GmcmSession.JsonOptions));
+            var configs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase) { [id] = SampleConfig() };
+            GmcmSession.ApplyOne(path, configs);
+            string result = File.ReadAllText(Path.ChangeExtension(path, null) + ".result.json");
+            Assert.DoesNotContain("mod not registered", result);
+            Assert.Equal(id, JsonSerializer.Deserialize<GmcmPendingFile>(File.ReadAllText(path), GmcmSession.JsonOptions)!.UniqueId);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void AtomicWriteReplacesViaTempRename()
     {
         string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));

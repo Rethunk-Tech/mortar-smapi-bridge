@@ -100,6 +100,8 @@ internal sealed class GmcmPendingFile
 {
     public int Schema { get; set; } = 1;
 
+    public string UniqueId { get; set; } = "";
+
     public List<GmcmPendingEdit> Edits { get; set; } = [];
 }
 

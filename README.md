@@ -8,25 +8,9 @@
 
 ---
 
-The SMAPI loader's companion for the [Mortar](https://github.com/Rethunk-Tech/mortar) mod manager: a SMAPI mod that lets Mortar send console commands to a running SMAPI game (Stardew Valley today). Games on other loaders have their own companion, such as [mortar-bepinex-bridge](https://github.com/Rethunk-Tech/mortar-bepinex-bridge) for BepInEx. Mortar starts the game through its launcher (Steam, GOG, Heroic or Lutris) and reads SMAPI's log, so it has no access to SMAPI's stdin; this mod provides the missing input channel.
+The SMAPI loader's companion for [Mortar](https://github.com/Rethunk-Tech/mortar): a SMAPI mod that lets Mortar send console commands to a running SMAPI game (Stardew Valley today). Other loaders have their own companion ([mortar-bepinex-bridge](https://github.com/Rethunk-Tech/mortar-bepinex-bridge) for BepInEx). Mortar starts the game through its launcher and reads SMAPI's log, so it has no stdin; this mod is the input channel.
 
-## Quick start
-
-```sh
-dotnet build -c Release && dotnet test -c Release
-```
-
-Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
-
-## Highlights
-
-- Loopback TCP command channel: one connection per SMAPI console line, authenticated with a per-run token
-- Writes `mortar-smapi-bridge.json` (`port`, `token`) in the mod folder and deletes it on exit
-- Optional loopback overlay: `GET /state` for OBS, separate persistent token, no path to the command queue
-- Command channel runs on SMAPI 4.5.2 and later 4.x; the overlay runs on Stardew Valley 1.6.14 up to, but not including, 1.7. The two gates are independent: either can be off while the other runs.
-- [GMCM menu capture](#gmcm-menu-capture): each mod's Generic Mod Config Menu options as JSON, and edits from Mortar applied back
-- [Frame timings](#frame-timings): on request, each mod's time in the per-frame SMAPI events per frame (average, 95th percentile, peak, share of the frame) and the frame time without them
-- [Startup timings](#startup-timings): per-mod time from launch to the title screen, and the game methods each mod's Harmony patches can replace
+Build, SMAPI dll override, install, versioning and gate: [HUMANS.md](HUMANS.md).
 
 ## Nexus page description
 
@@ -37,50 +21,25 @@ Prerequisites, the SMAPI dll override, install and gate: [HUMANS.md](HUMANS.md).
 - **Safety:** it listens on `127.0.0.1` only (never the network, never the internet) and every request needs a random token stored in a file only your user can read. It makes no outgoing connections.
 - **Source and licence:** [github.com/Rethunk-Tech/mortar-smapi-bridge](https://github.com/Rethunk-Tech/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
 
-## How it works
+## Discovery and protocol
 
-On launch the mod listens on `127.0.0.1` (port chosen by the OS) and writes `mortar-smapi-bridge.json` in its own folder:
+On launch the mod listens on `127.0.0.1` (OS-chosen port) and writes user-only `mortar-smapi-bridge.json` in its folder (`{"port":...,"token":"<64 hex>"}`; 0600 / user-only ACL), deleted on exit. Token compare is constant-time.
 
-```json
-{"port":51234,"token":"<64 hex chars>"}
-```
+One connection per command: two LF-terminated lines (`<token>` then `<command line>`). Reply one line and close: `ok`, `ok <json>` for `perf` / `perf start` / `perf stop`, or `error: <message>` (`unauthorized`, `missing or oversized command`, `empty command`, `unterminated quote or escape`). Unfinished input within 5s is dropped with no reply.
 
-The file is restricted to the current user (mode 0600 on Linux and macOS; a user-only ACL on Windows) and deleted on exit. Every request must carry the random 32-byte token, compared in constant time.
+Command line is quote-aware (double quotes group, backslash escapes), non-empty, max 4096 bytes; token line max 128 bytes. `ok` means queued for the next update tick as if typed in the SMAPI console; output and unknown-command errors go to the SMAPI log. Received commands log at Trace.
 
-## Protocol
-
-One connection per command. The client sends two LF-terminated lines:
-
-```text
-<token>
-<command line>
-```
-
-The mod replies with one line and closes: `ok`, `ok <json>` for a question (`perf`, `perf start`, `perf stop`: see [Frame timings](#frame-timings)) or `error: <message>` (`unauthorized`, `missing or oversized command`, `empty command`, `unterminated quote or escape`). A client that does not finish both lines within 5 seconds is dropped with no reply.
-
-The command line is parsed quote-aware (double quotes group, backslash escapes) and must be non-empty; the limit is 4096 bytes. The token line is limited to 128 bytes.
-
-`ok` means the command was queued. It runs on the game's next update tick exactly as if typed in the SMAPI console (built-ins like `help`, other mods' commands, `screen=N`), and its output appears in the SMAPI log. An unknown command is reported there, not in the reply. Each received command is logged at Trace level.
-
-SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection (`SCore.RawCommandQueue`). The command channel runs on SMAPI 4 from 4.5.2, where the lookup was verified; SMAPI 5, or a renamed queue in a later 4.x, turns it off with a logged message.
+SMAPI has no public API for arbitrary commands (`ICommandHelper` only adds them), so the line is added to `SCore.RawCommandQueue` by reflection. Verified on SMAPI 4 from 4.5.2; SMAPI 5 or a renamed queue turns the channel off with a log message.
 
 ## Stream overlay
 
-Overlay mode is off by default. Set `OverlayEnabled` to `true` in `config.json`, choose the fixed `OverlayPort` (the bridge accepts 1 to 65535; Mortar writes 1024 to 65535), and restart the game:
+Off by default. Set `OverlayEnabled` to `true` in user-only `config.json`, set `OverlayPort` (bridge accepts 1–65535; Mortar writes 1024–65535), restart. `OverlayToken` is generated on first enable and is not the command token.
 
-```json
-{
-  "OverlayEnabled": true,
-  "OverlayPort": 8123,
-  "OverlayToken": "<generated on first enable>"
-}
-```
+On Stardew Valley 1.6.14–1.6.x the loopback listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same without a body. Unauthenticated `OPTIONS /state` returns 204 with `Allow: GET, HEAD, OPTIONS`, `Access-Control-Allow-Headers: Authorization`, `Access-Control-Allow-Methods: GET, HEAD`. Other methods: 405 with the same `Allow`. Auth: `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. Unfinished request within 5s is dropped. After the first one-second tick with no save loaded: `{"inGame":false}`. Before that tick, or after a snapshot read failure: 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). Replies send `Access-Control-Allow-Origin: *`. No path to the command queue.
 
-The token is persistent, separate from the command token, and the config file is restricted to the current user. On Stardew Valley 1.6.14 and later 1.6.x the loopback-only listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same response without a body. Unauthenticated `OPTIONS /state` returns 204 with `Allow: GET, HEAD, OPTIONS`, `Access-Control-Allow-Headers: Authorization`, and `Access-Control-Allow-Methods: GET, HEAD` so a browser preflight can learn GET is allowed. Other methods return 405 with the same `Allow`. Authenticate with `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. A request that does not finish within 5 seconds is dropped. After the first one-second tick with no save loaded, the body is `{"inGame":false}`. Before that tick, or after a snapshot read failure, it is 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). Replies send `Access-Control-Allow-Origin: *`. The listener only serves this read-only endpoint; it has no path to the command queue.
+The snapshot is taken on SMAPI's game thread; the listener serves the last one. Game state is read only when `Context.IsWorldReady`. A snapshot read failure is logged once per distinct message. Outside 1.6.14–1.6.x the overlay stays off (warning); the command channel stays up.
 
-The snapshot is collected on SMAPI's game thread and the listener serves the last snapshot. Game state is only read when SMAPI reports the world is ready (`Context.IsWorldReady`). A snapshot read failure is logged once per distinct error message. If the game version is outside 1.6.14 to 1.6.x, the overlay stays off and logs a warning; the command channel remains available.
-
-A small OBS browser-source example is in [`examples/overlay/index.html`](examples/overlay/index.html). Open it with `?token=...&port=...`. With no `field`, it shows the full snapshot. Add `field=<name>` for one value per browser source. Add `label=1` to prefix a short label. Style in OBS Custom CSS using the element `id` and `class` for that value (`#player` / `.player`, `#skill-farming` / `.skill.farming`; `field=skill.farming` uses `#skill-farming`). While not in game the page is blank except `field=inGame`, which shows `true` or `false`. If the bridge is unreachable or errors, the page is blank (a console message once per state change).
+OBS example: [`examples/overlay/index.html`](examples/overlay/index.html) with `?token=...&port=...`. No `field`: full snapshot. `field=<name>`: one value. `label=1`: prefix a short label. Style with `#player` / `.player`, `#skill-farming` / `.skill.farming` (`field=skill.farming` → `#skill-farming`). Off-game the page is blank except `field=inGame` (`true`/`false`). Unreachable or error: blank (one console message per state change).
 
 | `field` | Shown as |
 | --- | --- |
@@ -105,10 +64,10 @@ A small OBS browser-source example is in [`examples/overlay/index.html`](example
 
 ## GMCM menu capture
 
-On unless `GmcmEnabled` is `false` in `config.json`. Files go in the profile dir: the nearest folder above the mod that holds Mortar's `profile.json`; without one, nothing is written.
+On unless `GmcmEnabled` is `false`. Files go in the profile dir (nearest ancestor with Mortar's `profile.json`); without one, nothing is written.
 
-- **When:** on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`.
-- **Capture:** `gmcm/<UniqueID>.json` per mod, written atomically; `gmcm/_index.json` is `{schema: 1, gmcmVersion, capturedAt, mods: [{id, name, version}]}`. `fieldId` is omitted when it looks like a GUID.
+- **When:** first update after `GameLaunched`, leaving a GMCM menu, and `SaveLoaded`.
+- **Capture:** `gmcm/<UniqueID>.json` per mod, atomic; `gmcm/_index.json` is `{schema: 1, gmcmVersion, capturedAt, mods: [{id, name, version}]}`. `fieldId` omitted when it looks like a GUID.
 
   ```text
   {schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault,
@@ -116,17 +75,17 @@ On unless `GmcmEnabled` is `false` in `config.json`. Files go in the profile dir
      choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}
   ```
 
-- **Apply:** on that first title-screen tick, before capture, the bridge reads `gmcm-pending/<file>.json` (not `_`-prefixed, not `*.result.json`, at most 1 MiB) `{schema: 1, uniqueId, edits: [{page, index, kind, fieldId, name, value}]}`. `uniqueId` selects the GMCM mod; when it is omitted the stem of the file name is used. Each edit matches by `fieldId` when it is not a GUID, else by `(page, index, kind, name)`; then every option runs `BeforeSave` → `ModConfig.Save` → `AfterSave`.
-- **Result:** `gmcm-pending/<file>.result.json` `{schema: 1, applied, skipped: [{edit, reason}]}`; the pending file is deleted only after a successful save. Unregistered mods and failed matches are skipped with reasons.
+- **Apply:** on that first title-screen tick, before capture, `gmcm-pending/<file>.json` (not `_`-prefixed, not `*.result.json`, ≤1 MiB) `{schema: 1, uniqueId, edits: [{page, index, kind, fieldId, name, value}]}`. `uniqueId` selects the GMCM mod; if omitted, the file stem. Match by `fieldId` when it is not a GUID, else `(page, index, kind, name)`; then every option `BeforeSave` → `ModConfig.Save` → `AfterSave`.
+- **Result:** `gmcm-pending/<file>.result.json` `{schema: 1, applied, skipped: [{edit, reason}]}`; pending deleted only after a successful save. Unregistered mods and failed matches are skipped with reasons.
 
 ## Startup timings
 
-On unless `StartupTimings` is `false` in `config.json`, and only inside a Mortar profile. Mortar loads the bridge first through `SMAPI-config.json`'s `ModsToLoadEarly`, so no mod's `Entry` runs before it.
+On unless `StartupTimings` is `false`, and only inside a Mortar profile. Mortar loads the bridge first via `SMAPI-config.json` `ModsToLoadEarly`, so no other `Entry` runs before it.
 
-- **Measured:** from the bridge's `Entry` to the title screen, each mod's exclusive time in every SMAPI event handler and in the asset edits and loads it registered. Content Patcher's time is split by content pack: loading `content.json` and `config.json`, parsing patches, evaluating each patch's tokens, and its edits. Exclusive means time spent in another measured mod's code, such as an asset edit triggered from an update tick, is charged to that mod only.
-- **`StartupProfile: true`:** also times each other mod's `Entry` and `GetApi` from SMAPI's side: a postfix on SMAPI's own per-mod `SetApi` call charges the time since the previous call to the mod that just finished, so no mod's own method is patched. A measured launch also skips the title intro animation, so the title time measures loading rather than a fixed cut scene.
-- **At the title screen:** the event hooks are removed and the clock stops. The Harmony patches stay in place but do nothing, since unpatching regenerates every patched method, which freezes the title screen for seconds. If the title screen is never reached, timing stops after 15 minutes and `phases.titleScreen` is `0`.
-- **Report:** `startup/<yyyyMMddTHHmmssZ>.json` in the profile dir (process start UTC), the last 10 kept. Phases are ms from process start.
+- **Measured:** from the bridge's `Entry` to the title screen, each mod's exclusive time in every SMAPI event handler and in the asset edits and loads it registered. Content Patcher's time is split by content pack (`content.json` / `config.json` load, patch parse, token eval, edits). Exclusive: time in another measured mod (e.g. an asset edit from an update tick) is charged to that mod only.
+- **`StartupProfile: true`:** also times each other mod's `Entry` and `GetApi` from SMAPI's side: a postfix on SMAPI's per-mod `SetApi` charges the time since the previous call to the mod that just finished, so no mod's own method is patched. A measured launch skips the title intro, so title time is load, not a cut scene.
+- **At the title screen:** event hooks come off and the clock stops. Harmony patches stay but no-op: unpatching regenerates every patched method and freezes the title screen for seconds. If the title screen is never reached, timing stops after 15 minutes and `phases.titleScreen` is `0`.
+- **Report:** `startup/<yyyyMMddTHHmmssZ>.json` in the profile dir (process start UTC), last 10 kept. Phases are ms from process start.
 
   ```text
   {schema: 1, loader, game, processStart,
@@ -137,37 +96,25 @@ On unless `StartupTimings` is `false` in `config.json`, and only inside a Mortar
    otherMs, replaces: {<Harmony ID>: ["<Type.FullName>::<method>"]}}
   ```
 
-- **`replaces`:** read from Harmony's patch registry as the report is written. Per Harmony ID (by convention the mod's UniqueID; the bridge's own IDs are left out), the methods it can replace outright: transpilers, and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
+- **`replaces`:** Harmony patch registry at report time. Per Harmony ID (convention: mod UniqueID; the bridge's own IDs omitted), methods it can replace outright: transpilers, and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
 
 ## Frame timings
 
-Off until Mortar asks, and nothing is wrapped before then. `perf start` (the protocol's second kind of line, answered `ok {"measured":true}`) begins a window on the game's next update tick: every mod's handlers of the per-frame events (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and their World, ActiveMenu, Hud and Step variants) are swapped for timed delegates, the same swap the startup timing uses, so a mod that removes its own handler still can. A window lasts ten minutes at most; the wrappers come off then and the last summary stays. `perf stop` unwraps on the next update tick and answers with that last summary (`ok` plus the same JSON as `perf`). `perf start` again restarts it.
+Off until Mortar asks; nothing is wrapped before then. `perf start` (answered `ok {"measured":true}`) begins a window on the next update tick: every mod's per-frame handlers (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and World / ActiveMenu / Hud / Step variants) become timed delegates, the same swap startup timing uses, so a mod that removes its own handler still can. Window max ten minutes; wrappers come off then and the last summary stays. `perf stop` unwraps on the next tick and answers with that summary (`ok` plus the same JSON as `perf`). `perf start` again restarts it.
 
-- **Why not SMAPI's own monitor:** its `performance` counters keep a rolling average and peak per mod and event, with no 95th percentile and no share of the frame, so the handlers are timed here.
-- **Frame:** from one `UpdateTicking` to the next, so it includes the time the game waits for vsync. A mod's cost in a frame is the sum of its timed handlers in that frame; the bridge's own handlers are left out.
-- **`perf`:** the summary, rebuilt once a second:
+SMAPI's `performance` counters are a rolling average and peak per mod and event, with no 95th percentile and no share of the frame, so handlers are timed here.
+
+- **Frame:** one `UpdateTicking` to the next, including vsync wait. A mod's cost is the sum of its timed handlers in that frame; the bridge's own handlers are left out.
+- **`perf`:** summary rebuilt once a second:
 
   ```text
   ok {measured, active, seconds, frames, fps,
       frameMs: {avg, p50, p95, p99, max},
-      monoUsedBytes, monoHeapBytes, gcCollections,       (managed heap here)
+      monoUsedBytes, monoHeapBytes, gcCollections,
       baseline: {frameMs, modsMs, withoutModsMs},
       plugins: [{guid: <UniqueID>, msPerFrame, p95Ms, peakMs, share, callsPerFrame}, ...]}
   ```
 
-  `measured` stays true on every summary. `active` is true only while a window is running; it is false on the empty summary and after `perf stop`. `msPerFrame` averages over every frame, so a mod that ran in few frames has a small average and a high peak; `p95Ms` is the 95th percentile of its per-frame cost over all frames (zero for a mod that ran in fewer than 5% of them), with about 10% resolution; `share` is `msPerFrame` over the average frame. `baseline.withoutModsMs` is the average frame less the mods' timed handlers: the game, SMAPI and everything a mod does outside an event (Harmony patches, content edits) in one number. It is not a measurement with no mods loaded; profile an empty profile for that.
+  `measured` stays true on every summary. `active` is true only while a window is running. `msPerFrame` averages over every frame (a rare mod: small average, high peak). `p95Ms` is the 95th percentile of per-frame cost over all frames (zero if it ran in fewer than 5% of them), ~10% resolution. `share` is `msPerFrame` over the average frame. `baseline.withoutModsMs` is average frame minus timed handlers (game + SMAPI + Harmony/content work outside events), not a no-mods measurement; profile an empty profile for that.
 
-## Documentation
-
-| Topic | Location |
-| --- | --- |
-| Build, test, install | [HUMANS.md](HUMANS.md) |
-| Rules for agents | [AGENTS.md](AGENTS.md) |
-| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Security policy | [SECURITY.md](SECURITY.md) |
-| OBS overlay example | [examples/overlay/index.html](examples/overlay/index.html) |
-| Licence | [LICENSE](LICENSE) |
-
-## Licence
-
-Licensed under the [GNU Affero General Public License v3.0](LICENSE). SMAPI is LGPL-3.0 and is referenced, not redistributed.
+Licensed under [AGPL-3.0](LICENSE). SMAPI is LGPL-3.0, referenced not redistributed.

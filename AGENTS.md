@@ -16,3 +16,5 @@ C# SMAPI mod (net6.0) that lets Mortar send console commands: the SMAPI loader's
 ## Gate budget
 
 `.gate.toml` makes the build restore with `--locked-mode` as CI does, so a drifted `packages.lock.json` fails locally too. Measured 2026-10-09 with `gate --profile` at load 3 to 4 (CPU is the evidence): warm 2.1 to 2.9 s wall and about 1.7 CPU-s; cold (a clone without `bin/` or `obj/`, throwaway `NUGET_PACKAGES`, the gitignored `lib/` carried over) 6.5 s wall and 3.3 CPU-s, 5.3 s of it restore and build. Within budget; build and test are chained because test runs `--no-build`, and nothing else repeats work.
+
+Decided (NOMAD 2026-10-18): the OBS overlay keeps accepting `?token=` and sending `Access-Control-Allow-Origin: *`. OBS browser sources need both and the server is loopback-only; do not re-propose a header token or CORS removal.

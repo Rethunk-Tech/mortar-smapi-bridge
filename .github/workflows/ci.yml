@@ -29,15 +29,21 @@ jobs:
         with:
           dotnet-version: 10.0.x
       # The runner's apt shellcheck lags (0.9.0 on Ubuntu 24.04), so CI pins the release developers run.
-      - name: shellcheck
+      # actionlint is not on the image; gate's workflows check uses it from PATH.
+      - name: Install gate tools
         run: |
           curl -fsSL -o "$RUNNER_TEMP/shellcheck.tar.xz" https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
           echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  $RUNNER_TEMP/shellcheck.tar.xz" | sha256sum -c -
           tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
-          "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" -x scripts/*.sh
-      - run: dotnet restore --locked-mode
-      - run: dotnet build -c Release --no-restore
-      - run: dotnet test -c Release --no-build
+          mkdir -p "$RUNNER_TEMP/bin"
+          mv "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/bin/shellcheck"
+          curl -fsSL -o "$RUNNER_TEMP/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/bin" actionlint
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          go install github.com/Rethunk-Tech/rethunk-gate-cli/cmd/gate@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: gate
       - name: Keep the build for the release job
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

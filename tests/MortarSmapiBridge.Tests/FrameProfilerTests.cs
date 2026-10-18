@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MortarSmapiBridge.Perf;
 using Xunit;
 
@@ -28,5 +29,36 @@ public class FrameProfilerTests
         Assert.True(stop);
         Assert.Null(FrameProfiler.Query("help", Summary, out _, out _));
         Assert.Null(FrameProfiler.Query("perf restart", Summary, out _, out _));
+    }
+
+    [Fact]
+    public void StopThenStartOnTheSameTickOpensANewWindow()
+    {
+        var profiler = new FrameProfiler();
+        profiler.TryAnswer("perf stop");
+        profiler.TryAnswer("perf start");
+        profiler.Tick();
+        Assert.True(profiler.On);
+        using JsonDocument json = JsonDocument.Parse(profiler.TryAnswer("perf")!);
+        Assert.True(json.RootElement.GetProperty("measured").GetBoolean());
+        Assert.True(json.RootElement.GetProperty("active").GetBoolean());
+    }
+
+    [Fact]
+    public void EmptyAndStoppedSummariesKeepMeasuredAndAreInactive()
+    {
+        using JsonDocument empty = JsonDocument.Parse(FrameProfiler.EmptySummary);
+        Assert.True(empty.RootElement.GetProperty("measured").GetBoolean());
+        Assert.False(empty.RootElement.GetProperty("active").GetBoolean());
+
+        var profiler = new FrameProfiler();
+        profiler.TryAnswer("perf start");
+        profiler.Tick();
+        profiler.TryAnswer("perf stop");
+        profiler.Tick();
+        using JsonDocument stopped = JsonDocument.Parse(profiler.TryAnswer("perf")!);
+        Assert.True(stopped.RootElement.GetProperty("measured").GetBoolean());
+        Assert.False(stopped.RootElement.GetProperty("active").GetBoolean());
+        Assert.False(profiler.On);
     }
 }

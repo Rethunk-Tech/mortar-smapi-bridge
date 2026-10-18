@@ -115,12 +115,13 @@ internal sealed class FrameStats
     /// <summary>The <c>perf</c> reply: frame times, each mod's cost per frame (average over every frame, 95th
     /// percentile, peak, share of the frame and calls per frame) and the baseline, the frame time less the mods'
     /// timed handlers.</summary>
-    public string Json(long managedBytes, long heapBytes, int collections)
+    public string Json(long managedBytes, long heapBytes, int collections, bool active = false)
     {
         double perFrame = this.frameCount == 0 ? 0 : 1.0 / this.frameCount;
         double avg = this.frameTotalMs * perFrame;
         double modsAvg = this.modsTotalMs * perFrame;
-        var sb = new StringBuilder("{\"measured\":true,\"seconds\":").Append(Num(this.frameTotalMs / 1000))
+        var sb = new StringBuilder("{\"measured\":true,\"active\":").Append(active ? "true" : "false")
+            .Append(",\"seconds\":").Append(Num(this.frameTotalMs / 1000))
             .Append(",\"frames\":").Append(this.frameCount)
             .Append(",\"fps\":").Append(Num(this.frameTotalMs > 0 ? this.frameCount * 1000 / this.frameTotalMs : 0))
             .Append(",\"frameMs\":{\"avg\":").Append(Num(avg))

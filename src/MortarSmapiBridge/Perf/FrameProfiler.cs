@@ -40,6 +40,17 @@ internal sealed class FrameProfiler
 
     internal static readonly string EmptySummary = new FrameStats().Json(0, 0, 0);
 
+    internal bool On => this.on;
+
+    internal FrameProfiler()
+    {
+        this.monitor = null!;
+        this.ownId = "test";
+        this.harmony = null!;
+        this.events = new EventTiming(_ => false, this.Record);
+        this.attached = true;
+    }
+
     internal FrameProfiler(IModHelper helper, IMonitor monitor, string ownId)
     {
         this.monitor = monitor;
@@ -103,14 +114,12 @@ internal sealed class FrameProfiler
         }
     }
 
-    private void Tick()
+    internal void Tick()
     {
         if (this.halt)
         {
             this.halt = false;
-            this.restart = false;
             this.Stop();
-            return;
         }
 
         long now = Stopwatch.GetTimestamp();
@@ -127,6 +136,8 @@ internal sealed class FrameProfiler
             this.nextSummary = now;
             this.on = true;
         }
+        if (!this.on)
+            return;
         if (this.last != 0)
             this.stats.EndFrame((now - this.last) * 1000.0 / Stopwatch.Frequency);
         this.last = now;
@@ -161,5 +172,5 @@ internal sealed class FrameProfiler
     }
 
     private string Summarise() =>
-        this.stats.Json(GC.GetTotalMemory(false), GC.GetGCMemoryInfo().HeapSizeBytes, GC.CollectionCount(0) - this.collectionsAtStart);
+        this.stats.Json(GC.GetTotalMemory(false), GC.GetGCMemoryInfo().HeapSizeBytes, GC.CollectionCount(0) - this.collectionsAtStart, this.on);
 }

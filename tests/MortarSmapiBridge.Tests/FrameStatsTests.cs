@@ -105,6 +105,7 @@ public class FrameStatsTests
         stats.Reset();
         JsonElement root = Parse(stats);
         Assert.True(root.GetProperty("measured").GetBoolean());
+        Assert.False(root.GetProperty("active").GetBoolean());
         Assert.Equal(0, root.GetProperty("frames").GetInt64());
         Assert.Empty(root.GetProperty("plugins").EnumerateArray());
         Assert.Equal(FrameProfiler.EmptySummary, stats.Json(0, 0, 0));

@@ -16,6 +16,7 @@ internal sealed class OverlayServer : IDisposable
     private readonly TcpListener Listener;
     private readonly CancellationTokenSource Cts = new();
     private readonly string Token;
+    private int disposed;
     internal const string NotInGameJson = "{\"inGame\":false}";
 
     private string? snapshot;
@@ -40,6 +41,20 @@ internal sealed class OverlayServer : IDisposable
     public void SetSnapshot(OverlaySnapshot? value) =>
         Volatile.Write(ref this.snapshot, value == null ? null : Serialize(value));
 
+    internal void PublishSnapshot(Func<OverlaySnapshot?> read, HashSet<string> errors, Action<string> log)
+    {
+        try
+        {
+            this.SetSnapshot(read());
+        }
+        catch (Exception ex)
+        {
+            this.SetSnapshot(null);
+            if (errors.Add(ex.Message))
+                log($"Stream overlay state is unavailable: {ex.Message}");
+        }
+    }
+
     public void Start()
     {
         this.Listener.Start();
@@ -48,7 +63,15 @@ internal sealed class OverlayServer : IDisposable
 
     public void Dispose()
     {
-        this.Cts.Cancel();
+        if (Interlocked.Exchange(ref this.disposed, 1) != 0)
+            return;
+        try
+        {
+            this.Cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
         this.Listener.Stop();
         this.Cts.Dispose();
     }
@@ -127,7 +150,17 @@ internal sealed class OverlayServer : IDisposable
         if (!string.Equals(GetPath(parts[1]), "/state", StringComparison.Ordinal))
             return Response(404, "{\"error\":\"not found\"}");
 
-        if (!CommandLine.TokenMatches(this.Token, GetToken(parts[1], headers)))
+        string? token;
+        try
+        {
+            token = GetToken(parts[1], headers);
+        }
+        catch (UriFormatException)
+        {
+            return Response(400, "{\"error\":\"bad request\"}");
+        }
+
+        if (!CommandLine.TokenMatches(this.Token, token))
             return Response(401, "{\"error\":\"unauthorized\"}", "WWW-Authenticate: Bearer\r\n");
 
         string? current = Volatile.Read(ref this.snapshot);
@@ -152,14 +185,39 @@ internal sealed class OverlayServer : IDisposable
         {
             int separator = pair.IndexOf('=');
             string key = separator < 0 ? pair : pair[..separator];
-            if (!string.Equals(Uri.UnescapeDataString(key), "token", StringComparison.Ordinal))
+            if (!TryUnescape(key, out string decodedKey) || !string.Equals(decodedKey, "token", StringComparison.Ordinal))
                 continue;
 
             string value = separator < 0 ? "" : pair[(separator + 1)..];
-            return Uri.UnescapeDataString(value.Replace('+', ' '));
+            return TryUnescape(value.Replace('+', ' '), out string decoded) ? decoded : throw new UriFormatException();
         }
 
         return null;
+    }
+
+    private static bool TryUnescape(string value, out string decoded)
+    {
+        for (int i = 0; i < value.Length; i++)
+        {
+            if (value[i] != '%')
+                continue;
+            if (i + 2 >= value.Length || !Uri.IsHexDigit(value[i + 1]) || !Uri.IsHexDigit(value[i + 2]))
+            {
+                decoded = "";
+                return false;
+            }
+        }
+
+        try
+        {
+            decoded = Uri.UnescapeDataString(value);
+            return true;
+        }
+        catch (UriFormatException)
+        {
+            decoded = "";
+            return false;
+        }
     }
 
     private static string GetPath(string target)

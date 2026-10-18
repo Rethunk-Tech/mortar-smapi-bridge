@@ -21,6 +21,7 @@ public sealed class ModEntry : Mod
     private readonly HashSet<string> OverlayReadErrors = [];
     private string? StatePath;
     private Action<string>? Enqueue;
+    private int shutdown;
 
     public override void Entry(IModHelper helper)
     {
@@ -34,7 +35,7 @@ public sealed class ModEntry : Mod
         // channel's SMAPI checks below.
         this.StartOverlay(helper, config);
         ISemanticVersion api = Constants.ApiVersion;
-        if (!ApiRange.IsTested(api.MajorVersion, api.MinorVersion))
+        if (!ApiRange.IsTested(api.MajorVersion, api.MinorVersion, api.PatchVersion))
         {
             this.Monitor.Log($"Mortar SMAPI Bridge {this.ModManifest.Version} is tested on SMAPI {ApiRange.Tested}, but SMAPI {api} is running, so console commands from Mortar are off until the bridge is updated.", LogLevel.Warn);
             return;
@@ -129,15 +130,10 @@ public sealed class ModEntry : Mod
             return;
         }
 
-        try
-        {
-            this.Overlay.SetSnapshot(ReadOverlaySnapshot(this.OverlayHelper));
-        }
-        catch (Exception ex)
-        {
-            if (this.OverlayReadErrors.Add(ex.Message))
-                this.Monitor.Log($"Stream overlay state is unavailable: {ex.Message}", LogLevel.Error);
-        }
+        this.Overlay.PublishSnapshot(
+            () => ReadOverlaySnapshot(this.OverlayHelper),
+            this.OverlayReadErrors,
+            message => this.Monitor.Log(message, LogLevel.Error));
     }
 
     // SMAPI's reflection helper cannot bind a static property getter, so Game1's static properties are read directly.
@@ -220,15 +216,24 @@ public sealed class ModEntry : Mod
 
     private void Shutdown()
     {
-        if (this.OverlayHelper != null)
-            this.OverlayHelper.Events.GameLoop.OneSecondUpdateTicked -= this.UpdateOverlayState;
-        this.OverlayHelper = null;
-        this.Overlay?.Dispose();
-        this.Overlay = null;
-        this.Server?.Dispose();
-        this.Server = null;
-        if (this.StatePath != null)
-            File.Delete(this.StatePath);
+        if (Interlocked.Exchange(ref this.shutdown, 1) != 0)
+            return;
+
+        try
+        {
+            if (this.OverlayHelper != null)
+                this.OverlayHelper.Events.GameLoop.OneSecondUpdateTicked -= this.UpdateOverlayState;
+            this.OverlayHelper = null;
+            this.Overlay?.Dispose();
+            this.Overlay = null;
+            this.Server?.Dispose();
+            this.Server = null;
+        }
+        finally
+        {
+            if (this.StatePath != null)
+                File.Delete(this.StatePath);
+        }
     }
 
     /// <summary>

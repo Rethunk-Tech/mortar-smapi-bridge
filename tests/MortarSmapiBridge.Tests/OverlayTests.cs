@@ -110,14 +110,40 @@ public class OverlayTests
     }
 
     [Fact]
-    public void DisabledOverlayDoesNotOpenItsConfiguredPort()
+    public async Task BadPercentEscapeInTokenReturns400()
     {
-        Assert.False(new ModConfig().OverlayEnabled);
-
         int port = GetFreePort();
-        using var listener = new TcpListener(IPAddress.Loopback, port);
-        listener.Start();
-        Assert.True(listener.Server.IsBound);
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+
+        Assert.Contains(" 400 ", await Request(port, "/state?token=%"));
+    }
+
+    [Fact]
+    public async Task SnapshotThrowAfterSuccessReturns503()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+        Assert.Contains(" 200 ", await Request(port, "/state?token=overlay-token"));
+
+        var errors = new HashSet<string>();
+        server.PublishSnapshot(() => throw new InvalidOperationException("gone"), errors, _ => { });
+        Assert.Contains("gone", errors);
+
+        string response = await Request(port, "/state?token=overlay-token");
+        Assert.Contains(" 503 ", response);
+    }
+
+    [Fact]
+    public void DisposeIsIdempotent()
+    {
+        var server = new OverlayServer(GetFreePort(), "overlay-token");
+        server.Start();
+        server.Dispose();
+        server.Dispose();
     }
 
     private static OverlaySnapshot CreateSnapshot() =>

@@ -11,7 +11,7 @@ internal static class GmcmWalker
     {
         GmcmCaptureFile file = new()
         {
-            Schema = 1,
+            Schema = GmcmSchema.Current,
             Mod = mod,
             GmcmVersion = gmcmVersion,
             CapturedAt = capturedAt.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture),
@@ -71,7 +71,7 @@ internal static class GmcmWalker
             Editable = true
         };
 
-        string typeName = GmcmReflection.TypeName(option);
+        string typeName = option.GetType().Name;
         if (typeName.StartsWith("SimpleModOption", StringComparison.Ordinal))
             FillSimple(option, capture);
         else if (typeName.StartsWith("NumericModOption", StringComparison.Ordinal))

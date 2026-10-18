@@ -126,7 +126,7 @@ internal static class GmcmApply
 
     private static bool TrySetValue(object option, GmcmPendingEdit edit)
     {
-        string typeName = GmcmReflection.TypeName(option);
+        string typeName = option.GetType().Name;
         object? value = UnwrapJson(edit.Value);
         if (typeName.StartsWith("SimpleModOption", StringComparison.Ordinal)
             || typeName.StartsWith("NumericModOption", StringComparison.Ordinal)

@@ -252,11 +252,6 @@ internal static class GmcmReflection
         }
     }
 
-    internal static string TypeName(object instance)
-    {
-        return instance.GetType().Name;
-    }
-
     internal static Type? GenericArgument(object instance)
     {
         Type type = instance.GetType();

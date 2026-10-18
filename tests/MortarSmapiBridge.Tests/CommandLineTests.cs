@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Xunit;
 
 namespace MortarSmapiBridge.Tests;
@@ -48,5 +50,33 @@ public class CommandLineTests
         Assert.False(CommandLine.TokenMatches("abc123", "abc12"));
         Assert.False(CommandLine.TokenMatches("abc123", ""));
         Assert.False(CommandLine.TokenMatches("abc123", null));
+    }
+
+    public static TheoryData<byte[], int, string?> ReadLineCases() => new()
+    {
+        { "hello\n"u8.ToArray(), 16, "hello" },
+        { "hello\r\n"u8.ToArray(), 16, "hello" },
+        { "\n"u8.ToArray(), 16, "" },
+        { "ab\ncd\n"u8.ToArray(), 16, "ab" },
+        { "abcd"u8.ToArray(), 16, null },
+        { "abcd\n"u8.ToArray(), 3, null },
+        { [] , 16, null },
+    };
+
+    [Theory]
+    [MemberData(nameof(ReadLineCases))]
+    public async Task ReadLineStopsAtNewlineOrRejectsOversizeAndEof(byte[] payload, int max, string? expected)
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        Task<TcpClient> accept = listener.AcceptTcpClientAsync();
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+        using TcpClient peer = await accept;
+        await client.GetStream().WriteAsync(payload);
+        client.Close();
+
+        string? line = await CommandLine.ReadLine(peer.GetStream(), max, CancellationToken.None);
+        Assert.Equal(expected, line);
     }
 }

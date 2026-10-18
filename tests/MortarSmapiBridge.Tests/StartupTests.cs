@@ -68,6 +68,20 @@ public class StartupTests
     }
 
     [Fact]
+    public void GroupChargesFrameworkAssetTimeWhenThereIsNoPack()
+    {
+        long Ms(long ms) => ms * Stopwatch.Frequency / 1000;
+        var ticks = new Dictionary<StartupClock.Key, long>
+        {
+            [new("CP", "asset", null)] = Ms(400),
+            [new("CP", "asset", "Pack.A")] = Ms(100),
+        };
+        StartupMod cp = Assert.Single(StartupReport.Group(ticks, _ => null));
+        Assert.Equal(500, cp.AssetMs);
+        Assert.Equal(100, Assert.Single(cp.Packs).Ms);
+    }
+
+    [Fact]
     public void WriteKeepsTheNewestReports()
     {
         string dir = Directory.CreateTempSubdirectory("startup").FullName;

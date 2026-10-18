@@ -188,6 +188,27 @@ public sealed class GmcmWalkerTests
         Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n"), json);
     }
 
+    public static TheoryData<string?, object?> UnwrapJsonCases() => new()
+    {
+        { "true", true },
+        { "false", false },
+        { "42", 42 },
+        { "1.5", 1.5 },
+        { "\"hi\"", "hi" },
+        { "null", null },
+        { "[1,2]", "[1,2]" },
+        { null, 7 },
+        { "{\"n\":1,\"nested\":{\"s\":\"x\"}}", new Dictionary<string, object?> { ["n"] = 1, ["nested"] = new Dictionary<string, object?> { ["s"] = "x" } } },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnwrapJsonCases))]
+    public void UnwrapJsonCoercesJsonElementsAndLeavesOtherValues(string? json, object? expected)
+    {
+        object? input = json == null ? 7 : JsonSerializer.Deserialize<JsonElement>(json);
+        Assert.Equal(expected, GmcmApply.UnwrapJson(input));
+    }
+
     [Fact]
     public void LooksLikeGuidDetectsGmcmGeneratedIds()
     {
@@ -281,6 +302,28 @@ public sealed class GmcmWalkerTests
                 Files.AtomicWrite(path, "token", _ => throw new IOException("restrict failed")));
             Assert.False(File.Exists(path));
             Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void RestrictLeavesTheFileOwnerReadableAndWritableOnly()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "secret.json");
+            File.WriteAllText(path, "token");
+            Files.Restrict(path);
+            UnixFileMode mode = File.GetUnixFileMode(path);
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
         }
         finally
         {

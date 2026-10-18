@@ -6,12 +6,12 @@ namespace MortarSmapiBridge;
 
 /// <summary>Loopback-only TCP server: one connection per command, <c>token\ncommand\n</c> in, <c>ok\n</c>, <c>ok {json}\n</c> for a query or <c>error: msg\n</c> out.</summary>
 /// <param name="token">The shared secret clients must present.</param>
-/// <param name="submit">Queues a validated command line; returns an error message, or null on success.</param>
+/// <param name="submit">Queues a validated command line.</param>
 /// <param name="trace">Logs a received command.</param>
 /// <param name="query">Answers a line that asks a question instead of running a command with JSON, or null when it is not one.</param>
-internal sealed class BridgeServer(string token, Func<string, string?> submit, Action<string> trace, Func<string, string?> query) : IDisposable
+internal sealed class BridgeServer(string token, Action<string> submit, Action<string> trace, Func<string, string?> query) : IDisposable
 {
-    public const int MaxCommandBytes = 4096;
+    private const int MaxCommandBytes = 4096;
     private const int MaxTokenBytes = 128;
     private static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(5);
 
@@ -19,7 +19,7 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
     private readonly CancellationTokenSource Cts = new();
     private int disposed;
     private readonly string Token = token;
-    private readonly Func<string, string?> Submit = submit;
+    private readonly Action<string> Submit = submit;
     private readonly Action<string> Trace = trace;
     private readonly Func<string, string?> Query = query;
 
@@ -97,7 +97,7 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
         if (this.Query(line) is { } answer)
             return "ok " + answer;
         this.Trace(line);
-        string? failure = this.Submit(line);
-        return failure == null ? "ok" : "error: " + failure;
+        this.Submit(line);
+        return "ok";
     }
 }

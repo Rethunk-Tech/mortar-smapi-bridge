@@ -49,7 +49,7 @@ public sealed class ModEntry : Mod
         }
 
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
-        this.Server = new BridgeServer(token, this.Submit, line => this.Monitor.Log($"Command received: {line}", LogLevel.Trace), this.Answer);
+        this.Server = new BridgeServer(token, this.Enqueue!, line => this.Monitor.Log($"Command received: {line}", LogLevel.Trace), this.Answer);
         this.Server.Start();
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
@@ -66,12 +66,6 @@ public sealed class ModEntry : Mod
 
     // The questions Mortar asks the running game; anything else is a console command.
     private string? Answer(string line) => this.Profiler?.TryAnswer(line);
-
-    private string? Submit(string line)
-    {
-        this.Enqueue!(line);
-        return null;
-    }
 
     private void StartOverlay(IModHelper helper, ModConfig config)
     {

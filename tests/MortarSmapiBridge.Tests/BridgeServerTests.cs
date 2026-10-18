@@ -20,7 +20,7 @@ public class BridgeServerTests
     public async Task AQueryIsAnsweredWithJsonAndNeverQueuedAsACommand()
     {
         var queued = new List<string>();
-        using var server = new BridgeServer("secret", line => { queued.Add(line); return null; }, _ => { },
+        using var server = new BridgeServer("secret", queued.Add, _ => { },
             line => line == "perf" ? "{\"measured\":true}" : null);
         server.Start();
         Assert.Equal("ok {\"measured\":true}", await Ask(server, "secret", "perf"));
@@ -32,7 +32,7 @@ public class BridgeServerTests
     [Fact]
     public void DisposeIsIdempotent()
     {
-        var server = new BridgeServer("secret", _ => null, _ => { }, _ => null);
+        var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);
         server.Start();
         server.Dispose();
         server.Dispose();

@@ -42,6 +42,27 @@ public class OverlayTests
     }
 
     [Fact]
+    public async Task HeadStateMatchesGetHeadersWithoutABody()
+    {
+        int port = GetFreePort();
+        using var server = new OverlayServer(port, "overlay-token");
+        server.SetSnapshot(CreateSnapshot());
+        server.Start();
+
+        string get = await Request(port, "/state", "Authorization: Bearer overlay-token");
+        string head = await Request(port, "/state", "Authorization: Bearer overlay-token", "HEAD");
+        int getBody = get.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4;
+        int headBody = head.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4;
+        byte[] getBytes = Encoding.UTF8.GetBytes(get[getBody..]);
+
+        Assert.Contains(" 200 ", head);
+        Assert.Equal("", head[headBody..]);
+        Assert.Contains($"Content-Length: {getBytes.Length}", head);
+        Assert.Contains(" 405 ", await Request(port, "/state", "Authorization: Bearer overlay-token", "POST"));
+        Assert.Contains("Allow: GET, HEAD", await Request(port, "/state", "Authorization: Bearer overlay-token", "POST"));
+    }
+
+    [Fact]
     public async Task BearerTokenReturnsSnapshotJson()
     {
         int port = GetFreePort();
@@ -178,12 +199,12 @@ public class OverlayTests
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
-    private static async Task<string> Request(int port, string target, string? header = null)
+    private static async Task<string> Request(int port, string target, string? header = null, string method = "GET")
     {
         using var client = new TcpClient();
         await client.ConnectAsync(IPAddress.Loopback, port);
         await using NetworkStream stream = client.GetStream();
-        string request = $"GET {target} HTTP/1.1\r\nHost: 127.0.0.1\r\n{header}\r\n\r\n";
+        string request = $"{method} {target} HTTP/1.1\r\nHost: 127.0.0.1\r\n{header}\r\n\r\n";
         await stream.WriteAsync(Encoding.ASCII.GetBytes(request));
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return await reader.ReadToEndAsync();

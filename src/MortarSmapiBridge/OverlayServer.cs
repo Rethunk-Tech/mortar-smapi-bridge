@@ -145,10 +145,11 @@ internal sealed class OverlayServer : IDisposable
         string[] parts = requestLine.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 3)
             return Response(400, "{\"error\":\"bad request\"}");
-        if (!string.Equals(parts[0], "GET", StringComparison.Ordinal))
-            return Response(405, "{\"error\":\"method not allowed\"}");
+        bool head = string.Equals(parts[0], "HEAD", StringComparison.Ordinal);
+        if (!head && !string.Equals(parts[0], "GET", StringComparison.Ordinal))
+            return Response(405, "{\"error\":\"method not allowed\"}", "Allow: GET, HEAD\r\n");
         if (!string.Equals(GetPath(parts[1]), "/state", StringComparison.Ordinal))
-            return Response(404, "{\"error\":\"not found\"}");
+            return Response(404, "{\"error\":\"not found\"}", head: head);
 
         string? token;
         try
@@ -157,16 +158,16 @@ internal sealed class OverlayServer : IDisposable
         }
         catch (UriFormatException)
         {
-            return Response(400, "{\"error\":\"bad request\"}");
+            return Response(400, "{\"error\":\"bad request\"}", head: head);
         }
 
         if (!CommandLine.TokenMatches(this.Token, token))
-            return Response(401, "{\"error\":\"unauthorized\"}", "WWW-Authenticate: Bearer\r\n");
+            return Response(401, "{\"error\":\"unauthorized\"}", "WWW-Authenticate: Bearer\r\n", head);
 
         string? current = Volatile.Read(ref this.snapshot);
         return current == null
-            ? Response(503, "{\"error\":\"state unavailable\"}")
-            : Response(200, current);
+            ? Response(503, "{\"error\":\"state unavailable\"}", head: head)
+            : Response(200, current, head: head);
     }
 
     private static string? GetToken(string target, IReadOnlyDictionary<string, string> headers)
@@ -227,7 +228,7 @@ internal sealed class OverlayServer : IDisposable
     }
 
 
-    private static string Response(int status, string body, string extraHeaders = "")
+    private static string Response(int status, string body, string extraHeaders = "", bool head = false)
     {
         byte[] bytes = Encoding.UTF8.GetBytes(body);
         string reason = status switch
@@ -241,6 +242,6 @@ internal sealed class OverlayServer : IDisposable
             503 => "Service Unavailable",
             _ => "Error"
         };
-        return $"HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {bytes.Length}\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\n{extraHeaders}Connection: close\r\n\r\n{body}";
+        return $"HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {bytes.Length}\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\n{extraHeaders}Connection: close\r\n\r\n{(head ? "" : body)}";
     }
 }

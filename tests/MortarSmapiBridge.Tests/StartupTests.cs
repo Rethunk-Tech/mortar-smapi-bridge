@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Diagnostics;
 using System.Text.Json;
 using MortarSmapiBridge.Startup;
@@ -87,6 +88,42 @@ public class StartupTests
         {
             Directory.Delete(dir, true);
         }
+    }
+
+    [Fact]
+    public void WrapNewWrapsASameCountReplacement()
+    {
+        var original = new EventHandler<EventArgs>((_, _) => { });
+        var replacement = new EventHandler<EventArgs>((_, _) => { });
+        var first = new TimedHandler { Handler = original };
+        var second = new TimedHandler { Handler = replacement };
+        var handlers = new ArrayList { first };
+        var timing = new EventTiming();
+        timing.Add("Rendered", handlers);
+
+        timing.WrapNew();
+        Assert.NotSame(original, first.Handler);
+
+        handlers[0] = second;
+        timing.WrapNew();
+        Assert.NotSame(replacement, second.Handler);
+        timing.Restore();
+    }
+
+    private sealed class TimedHandler
+    {
+        public EventHandler<EventArgs> Handler { get; set; } = (_, _) => { };
+        public object SourceMod { get; } = new StubMod();
+    }
+
+    private sealed class StubMod
+    {
+        public object Manifest { get; } = new StubManifest();
+    }
+
+    private sealed class StubManifest
+    {
+        public string UniqueID => "Stub.Mod";
     }
 }
 

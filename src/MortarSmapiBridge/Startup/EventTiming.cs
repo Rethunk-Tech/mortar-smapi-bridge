@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using HarmonyLib;
-using StardewModdingAPI;
 
 namespace MortarSmapiBridge.Startup;
 
@@ -19,7 +18,6 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
     private static readonly MethodInfo WrapMethod = typeof(EventTiming).GetMethod(nameof(Wrap), BindingFlags.Instance | BindingFlags.NonPublic)!;
 
     private readonly List<(string Name, IList Handlers)> events = [];
-    private int[] counts = [];
     private readonly HashSet<object> seen = new(ReferenceEqualityComparer.Instance);
     private readonly List<(object Handler, FieldInfo Field, Delegate Original)> originals = [];
     private readonly List<Type> eventTypes = [];
@@ -47,9 +45,10 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
                     this.eventTypes.Add(managed.GetType());
             }
         }
-        this.counts = new int[this.events.Count];
         return this.events.Count > 0;
     }
+
+    internal void Add(string name, IList handlers) => this.events.Add((name, handlers));
 
     /// <summary>Patches each event type's Remove so a mod can still remove a handler the bridge wrapped; false when
     /// SMAPI's Remove has a different shape, in which case nothing may be wrapped.</summary>
@@ -80,9 +79,6 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
         for (int i = 0; i < this.events.Count; i++)
         {
             (string name, IList handlers) = this.events[i];
-            if (handlers.Count == this.counts[i])
-                continue;
-            this.counts[i] = handlers.Count;
             object[] snapshot;
             lock (handlers)
             {
@@ -95,15 +91,24 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
                     continue;
                 Type type = handler.GetType();
                 FieldInfo? field = type.GetField("<Handler>k__BackingField", Instance);
-                if (field?.GetValue(handler) is not Delegate original || type.GetProperty("SourceMod")?.GetValue(handler) is not IModInfo mod)
+                if (field?.GetValue(handler) is not Delegate original)
+                    continue;
+                string? modId = ModId(type.GetProperty("SourceMod")?.GetValue(handler));
+                if (modId == null)
                     continue;
                 Type args = original.GetType().GetGenericArguments()[0];
-                Delegate timed = (Delegate)WrapMethod.MakeGenericMethod(args).Invoke(this, [original, mod.Manifest.UniqueID, name])!;
+                Delegate timed = (Delegate)WrapMethod.MakeGenericMethod(args).Invoke(this, [original, modId, name])!;
                 wrapped[original] = (handler, field);
                 field.SetValue(handler, timed);
                 this.originals.Add((handler, field, original));
             }
         }
+    }
+
+    private static string? ModId(object? sourceMod)
+    {
+        object? manifest = sourceMod?.GetType().GetProperty("Manifest")?.GetValue(sourceMod);
+        return manifest?.GetType().GetProperty("UniqueID")?.GetValue(manifest)?.ToString();
     }
 
     internal void Restore()
@@ -115,7 +120,6 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
         }
         this.originals.Clear();
         this.seen.Clear();
-        Array.Clear(this.counts);
     }
 
     private EventHandler<T> Wrap<T>(EventHandler<T> inner, string mod, string eventName)

@@ -160,7 +160,7 @@ internal sealed class GmcmSession
                     index.Mods.Add(entry);
             }
 
-            Files.AtomicWrite(Path.Combine(gmcmDir, "_index.json"), JsonSerializer.Serialize(index, JsonOptions));
+            Files.AtomicWrite(Path.Combine(gmcmDir, "_index.json"), JsonSerializer.Serialize(index, JsonOptions), Files.Restrict);
         }
         catch (Exception ex)
         {
@@ -189,7 +189,7 @@ internal sealed class GmcmSession
                 gmcmVersion,
                 capturedAt);
             string dest = Path.Combine(gmcmDir, SafeFileName(id) + ".json");
-            Files.AtomicWrite(dest, JsonSerializer.Serialize(file, JsonOptions));
+            Files.AtomicWrite(dest, JsonSerializer.Serialize(file, JsonOptions), Files.Restrict);
             entry = new GmcmModIdentity { Id = id, Name = name, Version = version };
             return true;
         }
@@ -392,6 +392,6 @@ internal sealed class GmcmSession
         string dest = Path.ChangeExtension(pendingPath, ".result.json");
         if (dest.EndsWith(".json.result.json", StringComparison.Ordinal))
             dest = pendingPath[..^".json".Length] + ".result.json";
-        Files.AtomicWrite(dest, JsonSerializer.Serialize(result, JsonOptions));
+        Files.AtomicWrite(dest, JsonSerializer.Serialize(result, JsonOptions), Files.Restrict);
     }
 }

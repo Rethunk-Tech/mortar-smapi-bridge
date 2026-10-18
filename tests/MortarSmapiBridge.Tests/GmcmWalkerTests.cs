@@ -291,9 +291,30 @@ public sealed class GmcmWalkerTests
             Files.AtomicWrite(path, JsonSerializer.Serialize(new GmcmPendingFile { UniqueId = id }, GmcmSession.JsonOptions));
             var configs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase) { [id] = SampleConfig() };
             GmcmSession.ApplyOne(path, configs);
-            string result = File.ReadAllText(Path.ChangeExtension(path, null) + ".result.json");
+            string resultPath = Path.ChangeExtension(path, null) + ".result.json";
+            string result = File.ReadAllText(resultPath);
             Assert.DoesNotContain("mod not registered", result);
             Assert.Equal(id, JsonSerializer.Deserialize<GmcmPendingFile>(File.ReadAllText(path), GmcmSession.JsonOptions)!.UniqueId);
+            AssertOwnerOnly(resultPath);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void CaptureWritesOwnerOnlyJson()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-capture-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            bool ok = GmcmSession.TryCaptureOne(SampleConfig(), "1.12.0", DateTimeOffset.UtcNow, dir, out GmcmModIdentity? entry, out string? error);
+            Assert.True(ok);
+            Assert.Null(error);
+            Assert.Equal("demo.Mod", entry!.Id);
+            AssertOwnerOnly(Path.Combine(dir, "demo.Mod.json"));
         }
         finally
         {
@@ -345,13 +366,20 @@ public sealed class GmcmWalkerTests
             string path = Path.Combine(dir, "secret.json");
             File.WriteAllText(path, "token");
             Files.Restrict(path);
-            UnixFileMode mode = File.GetUnixFileMode(path);
-            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
+            AssertOwnerOnly(path);
         }
         finally
         {
             Directory.Delete(dir, true);
         }
+    }
+
+    private static void AssertOwnerOnly(string path)
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+        UnixFileMode mode = File.GetUnixFileMode(path);
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
     }
 
     private static ModConfig SampleConfig()

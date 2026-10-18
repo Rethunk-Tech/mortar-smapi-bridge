@@ -22,6 +22,7 @@ public sealed class ModEntry : Mod
     private string? StatePath;
     private Action<string>? Enqueue;
     private int shutdown;
+    private static readonly JsonSerializerOptions ConfigJson = new() { WriteIndented = true };
 
     public override void Entry(IModHelper helper)
     {
@@ -49,7 +50,7 @@ public sealed class ModEntry : Mod
         }
 
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
-        this.Server = new BridgeServer(token, this.Enqueue!, line => this.Monitor.Log($"Command received: {line}", LogLevel.Trace), this.Answer);
+        this.Server = new BridgeServer(token, this.Enqueue!, name => this.Monitor.Log($"Command received: {name}", LogLevel.Trace), this.Answer);
         this.Server.Start();
 
         this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
@@ -193,15 +194,12 @@ public sealed class ModEntry : Mod
         return config.OverlayToken;
     }
 
-    private static void WriteConfigFile(IModHelper helper, ModConfig config)
-    {
-        string path = Path.Combine(helper.DirectoryPath, "config.json");
-        if (!File.Exists(path))
-            File.WriteAllText(path, "");
-        Files.Restrict(path);
-        helper.WriteConfig(config);
-        Files.Restrict(path);
-    }
+    private static void WriteConfigFile(IModHelper helper, ModConfig config) =>
+        WriteRestrictedConfig(Path.Combine(helper.DirectoryPath, "config.json"), config);
+
+    // Restrict the still-empty temp file, then write, so the overlay token is never created world-readable.
+    internal static void WriteRestrictedConfig(string path, ModConfig config) =>
+        Files.AtomicWrite(path, JsonSerializer.Serialize(config, ConfigJson), Files.Restrict);
 
     private void Shutdown()
     {

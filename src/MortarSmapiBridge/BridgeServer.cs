@@ -13,11 +13,13 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
 {
     private const int MaxCommandBytes = 4096;
     private const int MaxTokenBytes = 128;
+    internal const int MaxInFlight = 8;
     private static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(5);
 
     private readonly TcpListener Listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource Cts = new();
     private int disposed;
+    private int inFlight;
     private readonly string Token = token;
     private readonly Action<string> Submit = submit;
     private readonly Action<string> Trace = trace;
@@ -59,26 +61,39 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
             {
                 return;
             }
+            if (Interlocked.Increment(ref this.inFlight) > MaxInFlight)
+            {
+                Interlocked.Decrement(ref this.inFlight);
+                client.Dispose();
+                continue;
+            }
             _ = Task.Run(() => this.Handle(client));
         }
     }
 
     private async Task Handle(TcpClient client)
     {
-        using (client)
+        try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(this.Cts.Token);
-            timeout.CancelAfter(ClientTimeout);
-            string reply;
-            try
+            using (client)
             {
-                var stream = client.GetStream();
-                reply = await this.Process(stream, timeout.Token);
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(reply + "\n"), timeout.Token);
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(this.Cts.Token);
+                timeout.CancelAfter(ClientTimeout);
+                string reply;
+                try
+                {
+                    var stream = client.GetStream();
+                    reply = await this.Process(stream, timeout.Token);
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(reply + "\n"), timeout.Token);
+                }
+                catch (Exception ex) when (ex is OperationCanceledException or IOException or SocketException or ObjectDisposedException)
+                {
+                }
             }
-            catch (Exception ex) when (ex is OperationCanceledException or IOException or SocketException or ObjectDisposedException)
-            {
-            }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref this.inFlight);
         }
     }
 
@@ -91,12 +106,12 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
         string? line = await CommandLine.ReadLine(stream, MaxCommandBytes, cancel);
         if (line == null)
             return "error: missing or oversized command";
-        if (!CommandLine.TryParse(line, out _, out _, out string error))
+        if (!CommandLine.TryParse(line, out string name, out _, out string error))
             return "error: " + error;
 
         if (this.Query(line) is { } answer)
             return "ok " + answer;
-        this.Trace(line);
+        this.Trace(name);
         this.Submit(line);
         return "ok";
     }

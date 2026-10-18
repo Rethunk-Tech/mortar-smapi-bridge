@@ -11,12 +11,14 @@ internal sealed class OverlayServer : IDisposable
     private const int MaxRequestLineBytes = 4096;
     private const int MaxHeaderLineBytes = 4096;
     private const int MaxHeaderLines = 32;
+    internal const int MaxInFlight = 8;
     private static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(5);
 
     private readonly TcpListener Listener;
     private readonly CancellationTokenSource Cts = new();
     private readonly string Token;
     private int disposed;
+    private int inFlight;
     internal const string NotInGameJson = "{\"inGame\":false}";
 
     private string? snapshot;
@@ -95,26 +97,40 @@ internal sealed class OverlayServer : IDisposable
                 return;
             }
 
+            if (Interlocked.Increment(ref this.inFlight) > MaxInFlight)
+            {
+                Interlocked.Decrement(ref this.inFlight);
+                client.Dispose();
+                continue;
+            }
+
             _ = Task.Run(() => this.Handle(client));
         }
     }
 
     private async Task Handle(TcpClient client)
     {
-        using (client)
+        try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(this.Cts.Token);
-            timeout.CancelAfter(ClientTimeout);
+            using (client)
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(this.Cts.Token);
+                timeout.CancelAfter(ClientTimeout);
 
-            try
-            {
-                NetworkStream stream = client.GetStream();
-                string response = await this.Process(stream, timeout.Token);
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(response), timeout.Token);
+                try
+                {
+                    NetworkStream stream = client.GetStream();
+                    string response = await this.Process(stream, timeout.Token);
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(response), timeout.Token);
+                }
+                catch (Exception ex) when (ex is OperationCanceledException or IOException or SocketException or ObjectDisposedException)
+                {
+                }
             }
-            catch (Exception ex) when (ex is OperationCanceledException or IOException or SocketException or ObjectDisposedException)
-            {
-            }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref this.inFlight);
         }
     }
 

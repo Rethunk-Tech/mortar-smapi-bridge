@@ -107,10 +107,12 @@ internal sealed class GmcmSession
             {
                 ApplyOne(path, configs);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Disable("applying pending GMCM edits", ex);
-                return;
+                WriteResult(path, new GmcmPendingResultFile
+                {
+                    Skipped = { new GmcmSkippedEdit { Edit = new GmcmPendingEdit { Name = Path.GetFileNameWithoutExtension(path) }, Reason = "invalid pending JSON" } }
+                });
             }
         }
     }
@@ -210,11 +212,24 @@ internal sealed class GmcmSession
         }
 
         string json = File.ReadAllText(pendingPath);
-        GmcmPendingFile? pending = JsonSerializer.Deserialize<GmcmPendingFile>(json, JsonOptions);
+        GmcmPendingFile? pending;
+        try
+        {
+            pending = JsonSerializer.Deserialize<GmcmPendingFile>(json, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            WriteResult(pendingPath, new GmcmPendingResultFile
+            {
+                Skipped = { new GmcmSkippedEdit { Edit = new GmcmPendingEdit { Name = Path.GetFileNameWithoutExtension(pendingPath) }, Reason = "invalid pending JSON" } }
+            });
+            return;
+        }
+
         string uniqueId = pending != null && !string.IsNullOrEmpty(pending.UniqueId)
             ? pending.UniqueId
             : Path.GetFileNameWithoutExtension(pendingPath);
-        if (pending == null)
+        if (pending == null || pending.Edits == null)
         {
             WriteResult(pendingPath, new GmcmPendingResultFile
             {

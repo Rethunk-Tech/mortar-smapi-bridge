@@ -257,6 +257,29 @@ public sealed class GmcmWalkerTests
     }
 
     [Fact]
+    public void ApplyOneSkipsCorruptJsonAndANullEditsList()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string bad = Path.Combine(dir, "bad.json");
+            File.WriteAllText(bad, "{");
+            GmcmSession.ApplyOne(bad, []);
+            Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(bad, null) + ".result.json"));
+
+            string nullEdits = Path.Combine(dir, "nulledits.json");
+            File.WriteAllText(nullEdits, """{"schema":1,"edits":null}""");
+            GmcmSession.ApplyOne(nullEdits, []);
+            Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(nullEdits, null) + ".result.json"));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void ApplyUsesUniqueIdInPendingJsonNotTheSanitizedFileName()
     {
         string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));

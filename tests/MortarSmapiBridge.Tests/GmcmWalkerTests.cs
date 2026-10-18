@@ -208,6 +208,34 @@ public sealed class GmcmWalkerTests
     }
 
     [Fact]
+    public void SafeFileNameDoesNotEmitTraversalOrDeviceNames()
+    {
+        Assert.Equal("_", GmcmSession.SafeFileName("."));
+        Assert.Equal("_", GmcmSession.SafeFileName(".."));
+        Assert.Equal("_CON", GmcmSession.SafeFileName("CON"));
+        Assert.Equal("_CON.MyMod", GmcmSession.SafeFileName("CON.MyMod"));
+    }
+
+    [Fact]
+    public void ApplyOneRejectsAnOversizedPendingFileWithoutReadingItAsJson()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "huge.json");
+            File.WriteAllBytes(path, new byte[GmcmSession.MaxPendingBytes + 1]);
+            GmcmSession.ApplyOne(path, []);
+            string result = File.ReadAllText(Path.ChangeExtension(path, null) + ".result.json");
+            Assert.Contains("pending file too large", result);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void ApplyUsesUniqueIdInPendingJsonNotTheSanitizedFileName()
     {
         string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));

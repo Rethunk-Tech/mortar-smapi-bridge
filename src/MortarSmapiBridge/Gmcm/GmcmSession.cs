@@ -10,6 +10,8 @@ namespace MortarSmapiBridge.Gmcm;
 
 internal sealed class GmcmSession
 {
+    internal const long MaxPendingBytes = 1_048_576;
+
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -198,6 +200,15 @@ internal sealed class GmcmSession
 
     internal static void ApplyOne(string pendingPath, Dictionary<string, object> configs)
     {
+        if (new FileInfo(pendingPath).Length > MaxPendingBytes)
+        {
+            WriteResult(pendingPath, new GmcmPendingResultFile
+            {
+                Skipped = { new GmcmSkippedEdit { Edit = new GmcmPendingEdit { Name = Path.GetFileNameWithoutExtension(pendingPath) }, Reason = "pending file too large" } }
+            });
+            return;
+        }
+
         string json = File.ReadAllText(pendingPath);
         GmcmPendingFile? pending = JsonSerializer.Deserialize<GmcmPendingFile>(json, JsonOptions);
         string uniqueId = pending != null && !string.IsNullOrEmpty(pending.UniqueId)
@@ -332,7 +343,33 @@ internal sealed class GmcmSession
                 buffer[i] = '_';
         }
 
-        return new string(buffer);
+        string name = new string(buffer).TrimEnd(' ', '.');
+        if (name.Length == 0 || name is "." or "..")
+            return "_";
+
+        int dot = name.IndexOf('.');
+        string stem = dot < 0 ? name : name[..dot];
+        if (IsWindowsDeviceName(stem))
+            return "_" + name;
+
+        return name;
+    }
+
+    private static bool IsWindowsDeviceName(string stem)
+    {
+        if (stem.Equals("CON", StringComparison.OrdinalIgnoreCase)
+            || stem.Equals("PRN", StringComparison.OrdinalIgnoreCase)
+            || stem.Equals("AUX", StringComparison.OrdinalIgnoreCase)
+            || stem.Equals("NUL", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (stem.Length == 4
+            && (stem.StartsWith("COM", StringComparison.OrdinalIgnoreCase)
+                || stem.StartsWith("LPT", StringComparison.OrdinalIgnoreCase))
+            && stem[3] is >= '1' and <= '9')
+            return true;
+
+        return false;
     }
 
     private static void WriteResult(string pendingPath, GmcmPendingResultFile result)

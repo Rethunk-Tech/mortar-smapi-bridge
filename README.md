@@ -56,13 +56,13 @@ One connection per command. The client sends two LF-terminated lines:
 <command line>
 ```
 
-The mod replies with one line and closes: `ok`, `ok <json>` for a question (`perf`, `perf start`, `perf stop`: see [Frame timings](#frame-timings)) or `error: <message>`.
+The mod replies with one line and closes: `ok`, `ok <json>` for a question (`perf`, `perf start`, `perf stop`: see [Frame timings](#frame-timings)) or `error: <message>` (`unauthorized`, `missing or oversized command`, `empty command`, `unterminated quote or escape`). A client that does not finish both lines within 5 seconds is dropped with no reply.
 
 The command line is parsed quote-aware (double quotes group, backslash escapes) and must be non-empty; the limit is 4096 bytes. The token line is limited to 128 bytes.
 
 `ok` means the command was queued. It runs on the game's next update tick exactly as if typed in the SMAPI console (built-ins like `help`, other mods' commands, `screen=N`), and its output appears in the SMAPI log. An unknown command is reported there, not in the reply. Each received command is logged at Trace level.
 
-SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection (`SCore.RawCommandQueue`). The command channel runs on SMAPI 4 from 4.5, where the lookup was verified; SMAPI 5, or a renamed queue in a later 4.x, turns it off with a logged message.
+SMAPI has no public API to run arbitrary commands (`ICommandHelper` only adds them), so the mod adds the line to SMAPI's internal console input queue by reflection (`SCore.RawCommandQueue`). The command channel runs on SMAPI 4 from 4.5.2, where the lookup was verified; SMAPI 5, or a renamed queue in a later 4.x, turns it off with a logged message.
 
 ## Stream overlay
 
@@ -76,7 +76,7 @@ Overlay mode is off by default. Set `OverlayEnabled` to `true` in `config.json`,
 }
 ```
 
-The token is persistent, separate from the command token, and the config file is restricted to the current user. On Stardew Valley 1.6.14 and later 1.6.x the loopback-only listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same response without a body. Authenticate with `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. While no save is loaded it returns `{"inGame":false}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). The listener only serves this read-only endpoint; it has no path to the command queue.
+The token is persistent, separate from the command token, and the config file is restricted to the current user. On Stardew Valley 1.6.14 and later 1.6.x the loopback-only listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same response without a body. Other methods return 405. Authenticate with `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. A request that does not finish within 5 seconds is dropped. After the first one-second tick with no save loaded, the body is `{"inGame":false}`. Before that tick, or after a snapshot read failure, it is 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). Replies send `Access-Control-Allow-Origin: *`; `OPTIONS` is not served. The listener only serves this read-only endpoint; it has no path to the command queue.
 
 The snapshot is collected on SMAPI's game thread and the listener serves the last snapshot. Game state is only read when SMAPI reports the world is ready (`Context.IsWorldReady`). A snapshot read failure is logged once per distinct error message. If the game version is outside 1.6.14 to 1.6.x, the overlay stays off and logs a warning; the command channel remains available.
 
@@ -91,7 +91,7 @@ A small OBS browser-source example is in [`examples/overlay/index.html`](example
 | `year` | year |
 | `time` | in-game clock (for example `6:10 PM`) |
 | `date` | `Spring 12, Year 2` |
-| `money` | money |
+| `money` | money with a trailing `g` |
 | `weather` | weather |
 | `health` | `current/max` |
 | `stamina` | `current/max` |
@@ -107,7 +107,7 @@ A small OBS browser-source example is in [`examples/overlay/index.html`](example
 On unless `GmcmEnabled` is `false` in `config.json`. Files go in the profile dir: the nearest folder above the mod that holds Mortar's `profile.json`; without one, nothing is written.
 
 - **When:** on the first update after `GameLaunched`, when leaving a GMCM menu, and on `SaveLoaded`.
-- **Capture:** `gmcm/<UniqueID>.json` per mod, written atomically; `gmcm/_index.json` lists the captured mods and the GMCM version. `fieldId` is omitted when it looks like a GUID.
+- **Capture:** `gmcm/<UniqueID>.json` per mod, written atomically; `gmcm/_index.json` is `{schema: 1, gmcmVersion, capturedAt, mods: [{id, name, version}]}`. `fieldId` is omitted when it looks like a GUID.
 
   ```text
   {schema: 1, mod: {id, name, version}, gmcmVersion, capturedAt, titleScreenOnlyDefault,
@@ -115,8 +115,8 @@ On unless `GmcmEnabled` is `false` in `config.json`. Files go in the profile dir
      choices: [{value, label}], formatSamples, editable, titleScreenOnly}]}]}
   ```
 
-- **Apply:** on that first title-screen tick, before capture, the bridge reads `gmcm-pending/<UniqueID>.json` `{schema: 1, edits: [{page, index, kind, fieldId, name, value}]}`. Each edit matches by `fieldId` when it is not a GUID, else by `(page, index, kind, name)`; then every option runs `BeforeSave` → `ModConfig.Save` → `AfterSave`.
-- **Result:** `gmcm-pending/<UniqueID>.result.json` `{applied, skipped: [{edit, reason}]}`; the pending file is deleted only after a successful save. Unregistered mods and failed matches are skipped with reasons.
+- **Apply:** on that first title-screen tick, before capture, the bridge reads `gmcm-pending/<file>.json` (not `_`-prefixed, not `*.result.json`, at most 1 MiB) `{schema: 1, uniqueId, edits: [{page, index, kind, fieldId, name, value}]}`. `uniqueId` selects the GMCM mod; when it is omitted the stem of the file name is used. Each edit matches by `fieldId` when it is not a GUID, else by `(page, index, kind, name)`; then every option runs `BeforeSave` → `ModConfig.Save` → `AfterSave`.
+- **Result:** `gmcm-pending/<file>.result.json` `{schema: 1, applied, skipped: [{edit, reason}]}`; the pending file is deleted only after a successful save. Unregistered mods and failed matches are skipped with reasons.
 
 ## Startup timings
 
@@ -124,11 +124,11 @@ On unless `StartupTimings` is `false` in `config.json`, and only inside a Mortar
 
 - **Measured:** from the bridge's `Entry` to the title screen, each mod's exclusive time in every SMAPI event handler and in the asset edits and loads it registered. Content Patcher's time is split by content pack: loading `content.json` and `config.json`, parsing patches, evaluating each patch's tokens, and its edits. Exclusive means time spent in another measured mod's code, such as an asset edit triggered from an update tick, is charged to that mod only.
 - **`StartupProfile: true`:** also times each other mod's `Entry` and `GetApi` from SMAPI's side: a postfix on SMAPI's own per-mod `SetApi` call charges the time since the previous call to the mod that just finished, so no mod's own method is patched. A measured launch also skips the title intro animation, so the title time measures loading rather than a fixed cut scene.
-- **At the title screen:** the event hooks are removed and the clock stops. The Harmony patches stay in place but do nothing, since unpatching regenerates every patched method, which freezes the title screen for seconds.
-- **Report:** `startup/<process start UTC>.json` in the profile dir, the last 10 kept. Phases are ms from process start.
+- **At the title screen:** the event hooks are removed and the clock stops. The Harmony patches stay in place but do nothing, since unpatching regenerates every patched method, which freezes the title screen for seconds. If the title screen is never reached, timing stops after 15 minutes and `phases.titleScreen` is `0`.
+- **Report:** `startup/<yyyyMMddTHHmmssZ>.json` in the profile dir (process start UTC), the last 10 kept. Phases are ms from process start.
 
   ```text
-  {schema: 1, smapi, game, processStart,
+  {schema: 1, loader, game, processStart,
    phases: {bridgeEntry, entryDone, gameLaunched, titleMenu, titleScreen},
    entryTimed, entryMissed,
    mods: [{id, name, version, entryMs, eventMs: {<event>: ms}, assetMs, loadMs,

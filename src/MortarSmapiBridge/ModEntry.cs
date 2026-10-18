@@ -65,12 +65,7 @@ public sealed class ModEntry : Mod
     }
 
     // The questions Mortar asks the running game; anything else is a console command.
-    private string? Answer(string line) => line switch
-    {
-        "perf" => this.Profiler?.Reply(false),
-        "perf start" => this.Profiler?.Reply(true),
-        _ => null,
-    };
+    private string? Answer(string line) => this.Profiler?.TryAnswer(line);
 
     private string? Submit(string line)
     {

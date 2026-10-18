@@ -56,7 +56,7 @@ One connection per command. The client sends two LF-terminated lines:
 <command line>
 ```
 
-The mod replies with one line and closes: `ok`, `ok <json>` for a question (`perf`, `perf start`: see [Frame timings](#frame-timings)) or `error: <message>`.
+The mod replies with one line and closes: `ok`, `ok <json>` for a question (`perf`, `perf start`, `perf stop`: see [Frame timings](#frame-timings)) or `error: <message>`.
 
 The command line is parsed quote-aware (double quotes group, backslash escapes) and must be non-empty; the limit is 4096 bytes. The token line is limited to 128 bytes.
 
@@ -140,7 +140,7 @@ On unless `StartupTimings` is `false` in `config.json`, and only inside a Mortar
 
 ## Frame timings
 
-Off until Mortar asks, and nothing is wrapped before then. `perf start` (the protocol's second kind of line, answered `ok {"measured":true}`) begins a window on the game's next update tick: every mod's handlers of the per-frame events (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and their World, ActiveMenu, Hud and Step variants) are swapped for timed delegates, the same swap the startup timing uses, so a mod that removes its own handler still can. A window lasts ten minutes at most; the wrappers come off then and the last summary stays. `perf start` again restarts it.
+Off until Mortar asks, and nothing is wrapped before then. `perf start` (the protocol's second kind of line, answered `ok {"measured":true}`) begins a window on the game's next update tick: every mod's handlers of the per-frame events (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and their World, ActiveMenu, Hud and Step variants) are swapped for timed delegates, the same swap the startup timing uses, so a mod that removes its own handler still can. A window lasts ten minutes at most; the wrappers come off then and the last summary stays. `perf stop` unwraps on the next update tick and answers with that last summary (`ok` plus the same JSON as `perf`). `perf start` again restarts it.
 
 - **Why not SMAPI's own monitor:** its `performance` counters keep a rolling average and peak per mod and event, with no 95th percentile and no share of the frame, so the handlers are timed here.
 - **Frame:** from one `UpdateTicking` to the next, so it includes the time the game waits for vsync. A mod's cost in a frame is the sum of its timed handlers in that frame; the bridge's own handlers are left out.

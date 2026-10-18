@@ -28,6 +28,7 @@ internal sealed class FrameProfiler
     private readonly FrameStats stats = new();
     private readonly EventTiming events;
     private volatile bool restart;
+    private volatile bool halt;
     private volatile string summary = EmptySummary;
     private bool attached;
     private bool on;
@@ -48,14 +49,36 @@ internal sealed class FrameProfiler
         helper.Events.GameLoop.UpdateTicking += this.OnUpdateTicking;
     }
 
-    /// <summary>The <c>perf</c> reply; <paramref name="start"/> restarts the window (the first start begins timing).
-    /// Runs on a socket thread, so it only flags the restart for the game thread.</summary>
-    internal string Reply(bool start)
+    /// <summary>Answers a <c>perf</c> query on a socket thread. Start and stop only flag the game thread.</summary>
+    internal string? TryAnswer(string line)
     {
-        if (!start)
-            return this.summary;
-        this.restart = true;
-        return "{\"measured\":true}";
+        string? json = Query(line, this.summary, out bool start, out bool stop);
+        if (start)
+            this.restart = true;
+        if (stop)
+            this.halt = true;
+        return json;
+    }
+
+    /// <summary><c>perf</c> returns <paramref name="summary"/>; <c>perf start</c> acks; <c>perf stop</c> returns the
+    /// last summary and asks the game thread to unwrap. Anything else is a console command.</summary>
+    internal static string? Query(string line, string summary, out bool start, out bool stop)
+    {
+        start = false;
+        stop = false;
+        switch (line)
+        {
+            case "perf":
+                return summary;
+            case "perf start":
+                start = true;
+                return "{\"measured\":true}";
+            case "perf stop":
+                stop = true;
+                return summary;
+            default:
+                return null;
+        }
     }
 
     private void Record(string mod, string eventName, long ticks)
@@ -67,7 +90,7 @@ internal sealed class FrameProfiler
     [EventPriority((EventPriority)1001)]
     private void OnUpdateTicking(object? sender, UpdateTickingEventArgs e)
     {
-        if (!this.restart && !this.on)
+        if (!this.restart && !this.on && !this.halt)
             return;
         try
         {
@@ -82,6 +105,14 @@ internal sealed class FrameProfiler
 
     private void Tick()
     {
+        if (this.halt)
+        {
+            this.halt = false;
+            this.restart = false;
+            this.Stop();
+            return;
+        }
+
         long now = Stopwatch.GetTimestamp();
         if (this.restart)
         {

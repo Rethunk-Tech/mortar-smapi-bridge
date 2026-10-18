@@ -28,4 +28,13 @@ public class BridgeServerTests
         Assert.Equal("error: unauthorized", await Ask(server, "wrong", "perf"));
         Assert.Equal(["player_add name Abigail"], queued);
     }
+
+    [Fact]
+    public void DisposeIsIdempotent()
+    {
+        var server = new BridgeServer("secret", _ => null, _ => { }, _ => null);
+        server.Start();
+        server.Dispose();
+        server.Dispose();
+    }
 }

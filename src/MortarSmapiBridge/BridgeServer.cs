@@ -17,6 +17,7 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
 
     private readonly TcpListener Listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource Cts = new();
+    private int disposed;
     private readonly string Token = token;
     private readonly Func<string, string?> Submit = submit;
     private readonly Action<string> Trace = trace;
@@ -32,7 +33,15 @@ internal sealed class BridgeServer(string token, Func<string, string?> submit, A
 
     public void Dispose()
     {
-        this.Cts.Cancel();
+        if (Interlocked.Exchange(ref this.disposed, 1) != 0)
+            return;
+        try
+        {
+            this.Cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
         this.Listener.Stop();
         this.Cts.Dispose();
     }

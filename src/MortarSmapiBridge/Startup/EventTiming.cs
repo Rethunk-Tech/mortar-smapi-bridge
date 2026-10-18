@@ -48,8 +48,6 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
         return this.events.Count > 0;
     }
 
-    internal void Add(string name, IList handlers) => this.events.Add((name, handlers));
-
     /// <summary>Patches each event type's Remove so a mod can still remove a handler the bridge wrapped; false when
     /// SMAPI's Remove has a different shape, in which case nothing may be wrapped.</summary>
     internal bool PatchRemove(Harmony harmony)

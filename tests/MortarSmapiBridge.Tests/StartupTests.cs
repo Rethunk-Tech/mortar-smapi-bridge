@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text.Json;
 using MortarSmapiBridge.Startup;
 using Xunit;
@@ -113,7 +114,8 @@ public class StartupTests
         var second = new TimedHandler { Handler = replacement };
         var handlers = new ArrayList { first };
         var timing = new EventTiming();
-        timing.Add("Rendered", handlers);
+        object events = typeof(EventTiming).GetField("events", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(timing)!;
+        events.GetType().GetMethod("Add")!.Invoke(events, [("Rendered", (IList)handlers)]);
 
         timing.WrapNew();
         Assert.NotSame(original, first.Handler);

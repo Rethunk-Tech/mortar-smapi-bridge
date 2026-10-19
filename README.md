@@ -98,6 +98,10 @@ On unless `StartupTimings` is `false`, and only inside a Mortar profile. Mortar 
 
 - **`replaces`:** Harmony patch registry at report time. Per Harmony ID (convention: mod UniqueID; the bridge's own IDs omitted), methods it can replace outright: transpilers, and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
 
+## Intro skip
+
+Inside a Mortar profile, when `startup/skip-intro` exists in the profile folder (Mortar writes it before a launch when the player turned on "Skip the intro", and removes it otherwise), the title screen jumps to its buttons instead of playing the logo animation. The file's text ("intro" or "menu") makes no difference here: Stardew Valley's title buttons are its main menu. A measured launch (`StartupProfile`) skips the intro without the file.
+
 ## Frame timings
 
 Off until Mortar asks; nothing is wrapped before then. `perf start` (answered `ok {"measured":true}`) begins a window on the next update tick: every mod's per-frame handlers (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and World / ActiveMenu / Hud / Step variants) become timed delegates, the same swap startup timing uses, so a mod that removes its own handler still can. Window max ten minutes; wrappers come off then and the last summary stays. `perf stop` unwraps on the next tick and answers with that summary (`ok` plus the same JSON as `perf`). `perf start` again restarts it.

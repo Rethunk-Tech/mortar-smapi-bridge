@@ -138,7 +138,7 @@ internal sealed class StartupSession
                 // A measured launch skips the intro animation, so the title time is the mods' loading, not a fixed
                 // cut scene that overlaps it.
                 if (this.skipIntro)
-                    menu.GetType().GetMethod("skipToTitleButtons", BindingFlags.Instance | BindingFlags.Public)?.Invoke(menu, null);
+                    IntroSkip.Skip(menu);
             }
             // The title's intro animation is the game's, not a mod's: the screen counts as reached once the logo
             // has settled and the buttons can be used.
@@ -241,7 +241,7 @@ internal sealed class StartupSession
     private static string GameVersion() =>
         ModEntry.GameType()?.GetField("version", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as string ?? "";
 
-    private static object? Game1Menu()
+    internal static object? Game1Menu()
     {
         Type? game1 = ModEntry.GameType();
         const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;

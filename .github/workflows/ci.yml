@@ -103,7 +103,7 @@ jobs:
         uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2  # v1.0.0-beta.11
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
-          mod_id: 53964
+          mod_id: 5596342440652
           file_id: 8165118
           filename: MortarSmapiBridge-${{ steps.zip.outputs.version }}.zip
           version: ${{ steps.zip.outputs.version }}

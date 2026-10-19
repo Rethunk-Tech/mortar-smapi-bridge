@@ -104,7 +104,7 @@ jobs:
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
           mod_id: 53964
-          file_id: 186981
+          file_id: 8165118
           filename: MortarSmapiBridge-${{ steps.zip.outputs.version }}.zip
           version: ${{ steps.zip.outputs.version }}
           display_name: Mortar SMAPI Bridge

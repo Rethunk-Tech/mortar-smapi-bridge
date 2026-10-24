@@ -29,6 +29,7 @@ public sealed class ModEntry : Mod
         // First, so that with the bridge loaded early every other mod's Entry and handlers are measured.
         ModConfig config = helper.ReadConfig<ModConfig>();
         StartupSession.Start(helper, this.Monitor, this.ModManifest, config);
+        TitleScreen.Start(helper, this.Monitor);
         IntroSkip.Start(helper, this.Monitor);
         new GmcmSession(helper, this.Monitor, config).Attach();
         this.Profiler = new FrameProfiler(helper, this.Monitor, this.ModManifest.UniqueID);

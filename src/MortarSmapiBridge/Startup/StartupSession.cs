@@ -142,8 +142,7 @@ internal sealed class StartupSession
             }
             // The title's intro animation is the game's, not a mod's: the screen counts as reached once the logo
             // has settled and the buttons can be used.
-            FieldInfo? settled = menu.GetType().GetField("titleInPosition", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (settled == null || settled.GetValue(menu) is true)
+            if (TitleScreen.Settled(menu))
                 this.Finish(titleSeen: true);
         });
 

@@ -98,6 +98,10 @@ On unless `StartupTimings` is `false`, and only inside a Mortar profile. Mortar 
 
 - **`replaces`:** Harmony patch registry at report time. Per Harmony ID (convention: mod UniqueID; the bridge's own IDs omitted), methods it can replace outright: transpilers, and prefixes that return `bool`. Mortar uses it to hint at mods that do the same job.
 
+## Title screen line
+
+Once the title screen has settled (its logo in place and its buttons usable), the bridge logs `Title screen reached.` at INFO, once, whatever `StartupTimings` says. Mortar's launch screen closes on it.
+
 ## Intro skip
 
 Inside a Mortar profile, when `startup/skip-intro` exists in the profile folder (Mortar writes it before a launch when the player turned on "Skip the intro", and removes it otherwise), the title screen jumps to its buttons instead of playing the logo animation. The file's text ("intro" or "menu") makes no difference here: Stardew Valley's title buttons are its main menu. A measured launch (`StartupProfile`) skips the intro without the file.

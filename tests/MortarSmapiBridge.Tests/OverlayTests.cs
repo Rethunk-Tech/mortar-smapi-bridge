@@ -129,13 +129,45 @@ public class OverlayTests
         string[] fields =
         [
             "inGame", "location", "playerName", "season", "day", "year", "timeOfDay", "money", "weather",
-            "health", "maxHealth", "stamina", "maxStamina", "skills"
+            "health", "maxHealth", "stamina", "maxStamina", "skills",
+            "dayOfWeek", "daysLeftInSeason", "friendName", "friendHearts", "petName", "petType", "petWatered"
         ];
         string[] written = [.. root.EnumerateObject().Select(p => p.Name)];
         Assert.Equal(fields, written);
         string[] skills = ["farming", "fishing", "foraging", "mining", "combat", "luck"];
         string[] writtenSkills = [.. root.GetProperty("skills").EnumerateObject().Select(p => p.Name)];
         Assert.Equal(skills, writtenSkills);
+    }
+
+    [Fact]
+    public void UnreadableFriendAndPetAreOmittedNotZero()
+    {
+        OverlaySnapshot bare = CreateSnapshot() with { FriendName = null, FriendHearts = null, PetName = null, PetType = null, PetWatered = null };
+        using JsonDocument json = JsonDocument.Parse(OverlayServer.Serialize(bare));
+        string[] written = [.. json.RootElement.EnumerateObject().Select(p => p.Name)];
+        Assert.Equal(["dayOfWeek", "daysLeftInSeason"], written[^2..]);
+        Assert.DoesNotContain("friendName", written);
+        Assert.DoesNotContain("petWatered", written);
+    }
+
+    [Theory]
+    [InlineData(1, "Monday", 27)]
+    [InlineData(7, "Sunday", 21)]
+    [InlineData(28, "Sunday", 0)]
+    public void DatesDeriveFromTheDayOfMonth(int day, string weekday, int left)
+    {
+        Assert.Equal(weekday, OverlayDerived.DayOfWeekName(day));
+        Assert.Equal(left, OverlayDerived.DaysLeftInSeason(day));
+    }
+
+    [Fact]
+    public void FriendIsTheSpouseElseTheMostHearts()
+    {
+        (string, int)[] npcs = [("Abigail", 4), ("Sam", 9), ("Penny", 9), ("Haley", 0)];
+        Assert.Equal(("Abigail", 4), OverlayDerived.Friend("Abigail", npcs));
+        Assert.Equal(("Penny", 9), OverlayDerived.Friend(null, npcs));
+        Assert.Equal(("Penny", 9), OverlayDerived.Friend("Gone", npcs));
+        Assert.Null(OverlayDerived.Friend(null, [("Haley", 0)]));
     }
 
     [Fact]
@@ -260,7 +292,14 @@ public class OverlayTests
                 ["mining"] = 2,
                 ["combat"] = 1,
                 ["luck"] = 0
-            });
+            },
+            "Saturday",
+            21,
+            "Abigail",
+            8,
+            "Rex",
+            "Dog",
+            true);
 
     private static int GetFreePort()
     {

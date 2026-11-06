@@ -35,7 +35,7 @@ SMAPI has no public API for arbitrary commands (`ICommandHelper` only adds them)
 
 Off by default. Set `OverlayEnabled` to `true` in user-only `config.json`, set `OverlayPort` (bridge accepts 1–65535; Mortar writes 1024–65535), restart. `OverlayToken` is generated on first enable and is not the command token.
 
-On Stardew Valley 1.6.14–1.6.x the loopback listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same without a body. Unauthenticated `OPTIONS /state` returns 204 with `Allow: GET, HEAD, OPTIONS`, `Access-Control-Allow-Headers: Authorization`, `Access-Control-Allow-Methods: GET, HEAD`. Other methods: 405 with the same `Allow`. Auth: `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. Unfinished request within 5s is dropped. After the first one-second tick with no save loaded: `{"inGame":false}`. Before that tick, or after a snapshot read failure: 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, and `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`). Replies send `Access-Control-Allow-Origin: *`. No path to the command queue.
+On Stardew Valley 1.6.14–1.6.x the loopback listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same without a body. Unauthenticated `OPTIONS /state` returns 204 with `Allow: GET, HEAD, OPTIONS`, `Access-Control-Allow-Headers: Authorization`, `Access-Control-Allow-Methods: GET, HEAD`. Other methods: 405 with the same `Allow`. Auth: `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. Unfinished request within 5s is dropped. After the first one-second tick with no save loaded: `{"inGame":false}`. Before that tick, or after a snapshot read failure: 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`), `dayOfWeek` (`Monday` to `Sunday`) and `daysLeftInSeason` (28 minus the day), then, each omitted when the game does not give it, `friendName` and `friendHearts` (the spouse or roommate, else the NPC with the most hearts, at least 1), `petName`, `petType` (`Cat`, `Dog` or a mod's pet type) and `petWatered` (boolean: the pet's water bowl is filled today). Replies send `Access-Control-Allow-Origin: *`. No path to the command queue.
 
 The snapshot is taken on SMAPI's game thread; the listener serves the last one. Game state is read only when `Context.IsWorldReady`. A snapshot read failure is logged once per distinct message. Outside 1.6.14–1.6.x the overlay stays off (warning); the command channel stays up.
 
@@ -55,6 +55,11 @@ OBS example: [`examples/overlay/index.html`](examples/overlay/index.html) with `
 | `weather` | weather |
 | `health` | `current/max` |
 | `stamina` | `current/max` |
+| `weekday` | day of week (`Saturday`) |
+| `daysLeft` | days left in the season |
+| `friend` | `Abigail 8` (spouse, else most hearts); blank when none |
+| `pet` | `Rex (Dog)`; blank when no pet |
+| `petWatered` | `Yes` or `No`; blank when no pet bowl |
 | `skill.farming` | farming level |
 | `skill.fishing` | fishing level |
 | `skill.foraging` | foraging level |

@@ -92,6 +92,11 @@
         weather: "Weather",
         health: "Health",
         stamina: "Stamina",
+        weekday: "Weekday",
+        daysLeft: "Days left",
+        friend: "Friend",
+        pet: "Pet",
+        petWatered: "Pet watered",
         "skill.farming": "Farming",
         "skill.fishing": "Fishing",
         "skill.foraging": "Foraging",
@@ -151,6 +156,28 @@
             return `${data.health}/${data.maxHealth}`;
           case "stamina":
             return `${Math.round(data.stamina)}/${data.maxStamina}`;
+          case "weekday":
+            return data.dayOfWeek ?? "";
+          case "daysLeft":
+            return data.daysLeftInSeason == null
+              ? ""
+              : String(data.daysLeftInSeason);
+          case "friend":
+            return data.friendName == null || data.friendHearts == null
+              ? ""
+              : `${data.friendName} ${data.friendHearts}`;
+          case "pet":
+            return data.petName == null
+              ? ""
+              : data.petType == null
+                ? data.petName
+                : `${data.petName} (${data.petType})`;
+          case "petWatered":
+            return data.petWatered == null
+              ? ""
+              : data.petWatered
+                ? "Yes"
+                : "No";
           case "inGame":
             return data.inGame ? "true" : "false";
           default:

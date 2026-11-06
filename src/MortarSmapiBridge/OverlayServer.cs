@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MortarSmapiBridge;
 
@@ -79,7 +80,7 @@ internal sealed class OverlayServer : IDisposable
     }
 
 
-    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     internal static string Serialize(OverlaySnapshot value) => JsonSerializer.Serialize(value, WebJson);
 

@@ -32,6 +32,15 @@ public class BridgeServerTests
     }
 
     [Fact]
+    public void StatusListsGameVersionAndModsAndOmitsWhatSmapiCannotGive()
+    {
+        Assert.Equal(
+            "{\"gameVersion\":\"1.6.15\",\"gameVersionSource\":\"game\",\"plugins\":[{\"guid\":\"a.b\",\"version\":\"1.2.3\"}]}",
+            StatusReply.Build("1.6.15", [("a.b", "1.2.3")]));
+        Assert.Equal("{\"plugins\":[]}", StatusReply.Build(null, []));
+    }
+
+    [Fact]
     public async Task ExcessConnectionsAreClosed()
     {
         using var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);

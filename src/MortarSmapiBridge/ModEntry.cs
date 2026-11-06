@@ -68,17 +68,24 @@ public sealed class ModEntry : Mod
     }
 
     // The questions Mortar asks the running game; anything else is a console command.
-    private string? Answer(string line) => this.Profiler?.TryAnswer(line);
+    private string? Answer(string line) => line == StatusReply.Line
+        ? StatusReply.Build(ReadGameVersion(this.Helper), this.Helper.ModRegistry.GetAll().Select(mod => (mod.Manifest.UniqueID, mod.Manifest.Version.ToString())))
+        : this.Profiler?.TryAnswer(line);
+
+    // SMAPI keeps Constants.GameVersion internal and refuses reflection into its own types, so the version comes
+    // from the game's Game1.version, which SMAPI lets a mod reflect on.
+    private static string? ReadGameVersion(IModHelper helper)
+    {
+        Type? game1 = GameType();
+        return game1 == null ? null : helper.Reflection.GetField<string>(game1, "version", false)?.GetValue();
+    }
 
     private void StartOverlay(IModHelper helper, ModConfig config)
     {
         if (!config.OverlayEnabled)
             return;
 
-        // SMAPI keeps Constants.GameVersion internal and refuses reflection into its own types, so the version comes
-        // from the game's Game1.version, which SMAPI lets a mod reflect on.
-        Type? game1 = GameType();
-        string? raw = game1 == null ? null : helper.Reflection.GetField<string>(game1, "version", false)?.GetValue();
+        string? raw = ReadGameVersion(helper);
         if (raw == null || !SemanticVersion.TryParse(raw, out ISemanticVersion? gameVersion)
             || !ApiRange.IsTestedGame(gameVersion.MajorVersion, gameVersion.MinorVersion, gameVersion.PatchVersion))
         {

@@ -25,7 +25,9 @@ Build, SMAPI dll override, install, versioning and gate: [HUMANS.md](HUMANS.md).
 
 On launch the mod listens on `127.0.0.1` (OS-chosen port) and writes user-only `mortar-smapi-bridge.json` in its folder (`{"port":...,"token":"<64 hex>"}`; 0600 / user-only ACL), deleted on exit. Token compare is constant-time.
 
-One connection per command: two LF-terminated lines (`<token>` then `<command line>`). Reply one line and close: `ok`, `ok <json>` for `perf` / `perf start` / `perf stop`, or `error: <message>` (`unauthorized`, `missing or oversized command`, `empty command`, `unterminated quote or escape`). Unfinished input within 5s is dropped with no reply.
+One connection per command: two LF-terminated lines (`<token>` then `<command line>`). Reply one line and close: `ok`, `ok <json>` for `status` / `perf` / `perf start` / `perf stop`, or `error: <message>` (`unauthorized`, `missing or oversized command`, `empty command`, `unterminated quote or escape`). Unfinished input within 5s is dropped with no reply.
+
+`status` is answered, not queued: `{"gameVersion":"1.6.15","gameVersionSource":"game","plugins":[{"guid":"Pathoschild.ContentPatcher","version":"2.5.0"}]}`, the BepInEx bridge's shape. `plugins` lists every loaded mod and content pack by manifest `UniqueID` and `Version`; `gameVersion` and `gameVersionSource` (always `game`) are absent if the game version cannot be read. There is no `scene` and no plugin `location`, and no token appears in the reply.
 
 Command line is quote-aware (double quotes group, backslash escapes), non-empty, max 4096 bytes; token line max 128 bytes. `ok` means queued for the next update tick as if typed in the SMAPI console; output and unknown-command errors go to the SMAPI log. Received commands log at Trace.
 

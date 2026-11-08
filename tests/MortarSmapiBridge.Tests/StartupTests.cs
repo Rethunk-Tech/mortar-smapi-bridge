@@ -112,10 +112,10 @@ public class StartupTests
         var replacement = new EventHandler<EventArgs>((_, _) => { });
         var first = new TimedHandler { Handler = original };
         var second = new TimedHandler { Handler = replacement };
-        var handlers = new ArrayList { first };
+        IList handlers = new ArrayList { first };
         var timing = new EventTiming();
         object events = typeof(EventTiming).GetField("events", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(timing)!;
-        events.GetType().GetMethod("Add")!.Invoke(events, [("Rendered", (IList)handlers)]);
+        events.GetType().GetMethod("Add")!.Invoke(events, [("Rendered", handlers)]);
 
         timing.WrapNew();
         Assert.NotSame(original, first.Handler);

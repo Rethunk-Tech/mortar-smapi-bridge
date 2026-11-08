@@ -123,7 +123,7 @@ internal sealed class FrameStats
         var sb = new StringBuilder("{\"measured\":true,\"active\":").Append(active ? "true" : "false")
             .Append(",\"seconds\":").Append(Num(this.frameTotalMs / 1000))
             .Append(",\"frames\":").Append(this.frameCount)
-            .Append(",\"fps\":").Append(Num(this.frameTotalMs > 0 ? this.frameCount * 1000 / this.frameTotalMs : 0))
+            .Append(",\"fps\":").Append(Num(this.frameTotalMs > 0 ? this.frameCount * 1000.0 / this.frameTotalMs : 0))
             .Append(",\"frameMs\":{\"avg\":").Append(Num(avg))
             .Append(",\"p50\":").Append(Num(this.frames.Percentile(0.5, this.frameCount)))
             .Append(",\"p95\":").Append(Num(this.frames.Percentile(0.95, this.frameCount)))

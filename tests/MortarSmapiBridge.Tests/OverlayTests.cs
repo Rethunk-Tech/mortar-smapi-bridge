@@ -263,9 +263,8 @@ public class OverlayTests
     [Fact]
     public void DisposeIsIdempotent()
     {
-        var server = new OverlayServer(GetFreePort(), "overlay-token");
+        using var server = new OverlayServer(GetFreePort(), "overlay-token");
         server.Start();
-        server.Dispose();
         server.Dispose();
     }
 

@@ -70,9 +70,8 @@ public class BridgeServerTests
     [Fact]
     public void DisposeIsIdempotent()
     {
-        var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);
+        using var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);
         server.Start();
-        server.Dispose();
         server.Dispose();
     }
 }

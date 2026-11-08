@@ -15,7 +15,7 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void CaptureOfOneBrokenModNamesItAndWritesNothing()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
@@ -177,7 +177,7 @@ public sealed class GmcmWalkerTests
 
     private static void AssertFixture(string name, string json, [System.Runtime.CompilerServices.CallerFilePath] string source = "")
     {
-        string path = Path.Combine(Path.GetDirectoryName(source)!, "fixtures", name);
+        string path = Path.Join(Path.GetDirectoryName(source)!, "fixtures", name);
         json = json.Replace("\r\n", "\n") + "\n";
         if (Environment.GetEnvironmentVariable("MORTAR_BRIDGE_WRITE_FIXTURES") == "1")
         {
@@ -240,11 +240,11 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void ApplyOneRejectsAnOversizedPendingFileWithoutReadingItAsJson()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
-            string path = Path.Combine(dir, "huge.json");
+            string path = Path.Join(dir, "huge.json");
             File.WriteAllBytes(path, new byte[GmcmSession.MaxPendingBytes + 1]);
             GmcmSession.ApplyOne(path, []);
             string result = File.ReadAllText(Path.ChangeExtension(path, null) + ".result.json");
@@ -259,16 +259,16 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void ApplyOneSkipsCorruptJsonAndANullEditsList()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
-            string bad = Path.Combine(dir, "bad.json");
+            string bad = Path.Join(dir, "bad.json");
             File.WriteAllText(bad, "{");
             GmcmSession.ApplyOne(bad, []);
             Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(bad, null) + ".result.json"));
 
-            string nullEdits = Path.Combine(dir, "nulledits.json");
+            string nullEdits = Path.Join(dir, "nulledits.json");
             File.WriteAllText(nullEdits, """{"schema":1,"edits":null}""");
             GmcmSession.ApplyOne(nullEdits, []);
             Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(nullEdits, null) + ".result.json"));
@@ -282,12 +282,12 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void ApplyUsesUniqueIdInPendingJsonNotTheSanitizedFileName()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
             string id = "Foo.Bar:Mod";
-            string path = Path.Combine(dir, GmcmSession.SafeFileName(id) + ".json");
+            string path = Path.Join(dir, GmcmSession.SafeFileName(id) + ".json");
             Files.AtomicWrite(path, JsonSerializer.Serialize(new GmcmPendingFile { UniqueId = id }, GmcmSession.JsonOptions));
             var configs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase) { [id] = SampleConfig() };
             GmcmSession.ApplyOne(path, configs);
@@ -306,7 +306,7 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void CaptureWritesOwnerOnlyJson()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-capture-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-capture-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
@@ -314,7 +314,7 @@ public sealed class GmcmWalkerTests
             Assert.True(ok);
             Assert.Null(error);
             Assert.Equal("demo.Mod", entry!.Id);
-            AssertOwnerOnly(Path.Combine(dir, "demo.Mod.json"));
+            AssertOwnerOnly(Path.Join(dir, "demo.Mod.json"));
         }
         finally
         {
@@ -325,9 +325,9 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void AtomicWriteReplacesViaTempRename()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
-        string path = Path.Combine(dir, "demo.Mod.json");
+        string path = Path.Join(dir, "demo.Mod.json");
         Files.AtomicWrite(path, "{\"a\":1}");
         Files.AtomicWrite(path, "{\"a\":2}");
         Assert.Equal("{\"a\":2}", File.ReadAllText(path));
@@ -337,11 +337,11 @@ public sealed class GmcmWalkerTests
     [Fact]
     public void AtomicWriteRemovesTheTempFileWhenRestrictThrows()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
-            string path = Path.Combine(dir, "secret.json");
+            string path = Path.Join(dir, "secret.json");
             Assert.Throws<IOException>(() =>
                 Files.AtomicWrite(path, "token", _ => throw new IOException("restrict failed")));
             Assert.False(File.Exists(path));
@@ -359,11 +359,11 @@ public sealed class GmcmWalkerTests
         if (OperatingSystem.IsWindows())
             return;
 
-        string dir = Path.Combine(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
-            string path = Path.Combine(dir, "secret.json");
+            string path = Path.Join(dir, "secret.json");
             File.WriteAllText(path, "token");
             Files.Restrict(path);
             AssertOwnerOnly(path);

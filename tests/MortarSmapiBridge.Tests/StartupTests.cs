@@ -92,7 +92,7 @@ public class StartupTests
             string last = "";
             for (int i = 0; i < StartupReport.Kept + 3; i++)
                 last = StartupReport.Write(dir, new StartupReport { ProcessStart = start.AddMinutes(i) });
-            string[] files = Directory.GetFiles(Path.Combine(dir, "startup"));
+            string[] files = Directory.GetFiles(Path.Join(dir, "startup"));
             Assert.Equal(StartupReport.Kept, files.Length);
             Assert.Contains(last, files);
             using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(last));
@@ -148,7 +148,7 @@ public class StartupReportWireTests
     [Fact]
     public void TheReportUsesTheNamesMortarReads()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "mortar-startup-wire-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "mortar-startup-wire-" + Guid.NewGuid().ToString("N"));
         try
         {
             string path = MortarSmapiBridge.Startup.StartupReport.Write(dir, new MortarSmapiBridge.Startup.StartupReport { ProcessStart = new DateTime(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc), EntryTimed = true, OtherMs = 7 });

@@ -38,12 +38,13 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
         foreach (FieldInfo field in manager.GetType().GetFields(Instance))
         {
             object? managed = field.GetValue(manager);
-            if ((include == null || include(field.Name)) && managed?.GetType().GetField("Handlers", Instance)?.GetValue(managed) is IList handlers)
-            {
-                this.events.Add((field.Name, handlers));
-                if (!this.eventTypes.Contains(managed.GetType()))
-                    this.eventTypes.Add(managed.GetType());
-            }
+            if (managed is null || (include != null && !include(field.Name)))
+                continue;
+            if (managed.GetType().GetField("Handlers", Instance)?.GetValue(managed) is not IList handlers)
+                continue;
+            this.events.Add((field.Name, handlers));
+            if (!this.eventTypes.Contains(managed.GetType()))
+                this.eventTypes.Add(managed.GetType());
         }
         return this.events.Count > 0;
     }

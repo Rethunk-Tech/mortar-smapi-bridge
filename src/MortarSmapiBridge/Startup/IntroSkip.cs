@@ -47,7 +47,7 @@ internal sealed class IntroSkip
         try
         {
             object? menu = StartupSession.Game1Menu();
-            if (menu?.GetType().Name != "TitleMenu")
+            if (menu is null || menu.GetType().Name != "TitleMenu")
                 return;
             Skip(menu);
         }

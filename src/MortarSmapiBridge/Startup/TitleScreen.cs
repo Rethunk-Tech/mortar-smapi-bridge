@@ -28,7 +28,7 @@ internal static class TitleScreen
     /// <summary>Whether menu is the title screen with its logo settled and its buttons usable.</summary>
     internal static bool Settled(object? menu)
     {
-        if (menu?.GetType().Name != "TitleMenu")
+        if (menu is null || menu.GetType().Name != "TitleMenu")
             return false;
         FieldInfo? settled = menu.GetType().GetField("titleInPosition", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         return settled == null || settled.GetValue(menu) is true;

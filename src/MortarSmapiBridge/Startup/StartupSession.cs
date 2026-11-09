@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
 using HarmonyLib;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -181,7 +182,19 @@ internal sealed class StartupSession
             string path = StartupReport.Write(this.profileDir, report);
             this.monitor.Log($"Startup report written to {path}; {EventTiming.Unwrapped} handlers were removed by their mods while timed.", LogLevel.Trace);
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            this.monitor.Log($"Startup report could not be written: {ex.Message}", LogLevel.Trace);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            this.monitor.Log($"Startup report could not be written: {ex.Message}", LogLevel.Trace);
+        }
+        catch (JsonException ex)
+        {
+            this.monitor.Log($"Startup report could not be written: {ex.Message}", LogLevel.Trace);
+        }
+        catch (NotSupportedException ex)
         {
             this.monitor.Log($"Startup report could not be written: {ex.Message}", LogLevel.Trace);
         }

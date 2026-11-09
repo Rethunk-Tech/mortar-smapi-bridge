@@ -12,7 +12,7 @@ out="$root/lib"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 zip="$work/installer.zip"
-curl -fsSL -o "$zip" "https://github.com/Pathoschild/SMAPI/releases/download/$VERSION/SMAPI-$VERSION-installer.zip"
+curl -fsSL --retry 18 --retry-delay 10 -o "$zip" "https://github.com/Pathoschild/SMAPI/releases/download/$VERSION/SMAPI-$VERSION-installer.zip"
 echo "$INSTALLER_SHA256  $zip" | sha256sum -c -
 
 # The installer nests the game-side files in a zip named install.dat.

@@ -30,14 +30,15 @@ jobs:
           dotnet-version: 10.0.x
       # The runner's apt shellcheck lags (0.9.0 on Ubuntu 24.04), so CI pins the release developers run.
       # actionlint is not on the image; gate's workflows check uses it from PATH.
+      # Downloads retry transient failures instead of failing the run on a GitHub 5xx or a dropped connection.
       - name: Install gate tools
         run: |
-          curl -fsSL -o "$RUNNER_TEMP/shellcheck.tar.xz" https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+          curl -fsSL --retry 18 --retry-delay 10 -o "$RUNNER_TEMP/shellcheck.tar.xz" https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
           echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  $RUNNER_TEMP/shellcheck.tar.xz" | sha256sum -c -
           tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
           mkdir -p "$RUNNER_TEMP/bin"
           mv "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/bin/shellcheck"
-          curl -fsSL -o "$RUNNER_TEMP/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          curl -fsSL --retry 18 --retry-delay 10 -o "$RUNNER_TEMP/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/bin" actionlint
           # @latest would let the gate binary change under the same workflow SHA.
@@ -97,7 +98,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "MortarSmapiBridge-$version.zip"
+          for i in 1 2 3 4 5; do
+            gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "MortarSmapiBridge-$version.zip" --clobber && break
+            [ "$i" = 5 ] && exit 1
+            sleep 10
+          done
           echo "version=$version" >>"$GITHUB_OUTPUT"
       - name: Upload to Nexus Mods (Stardew Valley mod 53964)
         uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2  # v1.0.0-beta.11
@@ -124,10 +129,14 @@ jobs:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "MortarSmapiBridge-$version.zip"
+          for i in 1 2 3 4 5; do
+            gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "MortarSmapiBridge-$version.zip" --clobber && break
+            [ "$i" = 5 ] && exit 1
+            sleep 10
+          done
           api=https://stardewvalley.curseforge.com/api
           # Every Stardew 1.6 release from the manifest's MinimumGameVersion (1.6.14) on, so new game versions are picked up.
-          curl -fsS --config <(printf 'header = "X-Api-Token: %s"\n' "$CURSEFORGE_TOKEN") "$api/game/versions" >versions.json
+          curl -fsS --retry 18 --retry-delay 10 --config <(printf 'header = "X-Api-Token: %s"\n' "$CURSEFORGE_TOKEN") "$api/game/versions" >versions.json
           metadata="$(python3 - "$version" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" <<'PY'
           import json, sys
           def key(name):

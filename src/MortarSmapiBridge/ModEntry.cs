@@ -55,7 +55,7 @@ public sealed class ModEntry : Mod
         this.Server = new BridgeServer(token, this.Enqueue!, name => this.Monitor.Log($"Command received: {name}", LogLevel.Trace), this.Answer);
         this.Server.Start();
 
-        this.StatePath = Path.Combine(helper.DirectoryPath, StateFileName);
+        this.StatePath = Path.Join(helper.DirectoryPath, StateFileName);
         Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token }), Files.Restrict);
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }
@@ -229,14 +229,14 @@ public sealed class ModEntry : Mod
         }
         else
         {
-            Files.Restrict(Path.Combine(helper.DirectoryPath, "config.json"));
+            Files.Restrict(Path.Join(helper.DirectoryPath, "config.json"));
         }
 
         return config.OverlayToken;
     }
 
     private static void WriteConfigFile(IModHelper helper, ModConfig config) =>
-        WriteRestrictedConfig(Path.Combine(helper.DirectoryPath, "config.json"), config);
+        WriteRestrictedConfig(Path.Join(helper.DirectoryPath, "config.json"), config);
 
     // Restrict the still-empty temp file, then write, so the overlay token is never created world-readable.
     internal static void WriteRestrictedConfig(string path, ModConfig config) =>

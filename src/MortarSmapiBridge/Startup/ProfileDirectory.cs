@@ -8,7 +8,7 @@ internal static class ProfileDirectory
         DirectoryInfo? current = new(modDirectory);
         while (current != null)
         {
-            if (File.Exists(Path.Combine(current.FullName, "profile.json")))
+            if (File.Exists(Path.Join(current.FullName, "profile.json")))
                 return current.FullName;
             current = current.Parent;
         }

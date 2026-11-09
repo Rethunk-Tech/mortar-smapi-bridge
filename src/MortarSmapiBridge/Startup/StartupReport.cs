@@ -24,9 +24,9 @@ internal sealed class StartupReport
 
     internal static string Write(string profileDirectory, StartupReport report)
     {
-        string directory = Path.Combine(profileDirectory, "startup");
+        string directory = Path.Join(profileDirectory, "startup");
         Directory.CreateDirectory(directory);
-        string path = Path.Combine(directory, report.ProcessStart.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture) + ".json");
+        string path = Path.Join(directory, report.ProcessStart.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture) + ".json");
         Files.AtomicWrite(path, JsonSerializer.Serialize(report, WebJson));
         foreach (string old in Directory.EnumerateFiles(directory, "*.json").OrderByDescending(f => f, StringComparer.Ordinal).Skip(Kept))
             File.Delete(old);

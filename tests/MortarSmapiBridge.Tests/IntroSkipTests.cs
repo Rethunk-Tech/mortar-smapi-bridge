@@ -19,8 +19,8 @@ public class IntroSkipTests
         try
         {
             Assert.False(IntroSkip.Requested(root));
-            Directory.CreateDirectory(Path.Combine(root, "startup"));
-            File.WriteAllText(Path.Combine(root, "startup", "skip-intro"), "intro");
+            Directory.CreateDirectory(Path.Join(root, "startup"));
+            File.WriteAllText(Path.Join(root, "startup", "skip-intro"), "intro");
             Assert.True(IntroSkip.Requested(root));
         }
         finally

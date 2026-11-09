@@ -16,12 +16,12 @@ public class ProfileDirectoryTests
         {
             string current = root;
             for (int i = 0; i < depth; i++)
-                current = Directory.CreateDirectory(Path.Combine(current, $"mods{i}")).FullName;
+                current = Directory.CreateDirectory(Path.Join(current, $"mods{i}")).FullName;
 
             if (placeProfile)
-                File.WriteAllText(Path.Combine(root, "profile.json"), "{}");
+                File.WriteAllText(Path.Join(root, "profile.json"), "{}");
             else
-                File.WriteAllText(Path.Combine(current, "other.json"), "{}");
+                File.WriteAllText(Path.Join(current, "other.json"), "{}");
 
             string? found = ProfileDirectory.Find(current);
             Assert.Equal(placeProfile ? root : null, found);

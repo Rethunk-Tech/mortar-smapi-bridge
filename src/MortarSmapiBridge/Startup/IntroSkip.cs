@@ -22,7 +22,7 @@ internal sealed class IntroSkip
 
     /// <summary>Whether the profile in <paramref name="profileDirectory"/> asks to skip the intro.</summary>
     internal static bool Requested(string profileDirectory) =>
-        File.Exists(Path.Combine(profileDirectory, "startup", "skip-intro"));
+        File.Exists(Path.Join(profileDirectory, "startup", "skip-intro"));
 
     /// <summary>Watches for the title screen when the Mortar profile this mod runs in asks for it.</summary>
     internal static void Start(IModHelper helper, IMonitor monitor)

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace MortarSmapiBridge;
 
@@ -25,8 +24,13 @@ internal static class Files
             {
                 File.Delete(temp);
             }
-            catch (Exception)
+            catch (IOException ex)
             {
+                Debug.WriteLine(ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Debug.WriteLine(ex);
             }
             throw;
         }
@@ -40,7 +44,17 @@ internal static class Files
             return;
         }
 
-        if (chmod(path, 0x180) != 0)
+        var start = new ProcessStartInfo
+        {
+            FileName = "chmod",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardError = true
+        };
+        start.ArgumentList.Add("600");
+        start.ArgumentList.Add(path);
+        using var process = Process.Start(start);
+        if (process == null || !process.WaitForExit(10_000) || process.ExitCode != 0)
             throw new IOException($"Could not restrict permissions on {path}.");
     }
 
@@ -49,7 +63,7 @@ internal static class Files
         string account = Environment.UserDomainName + "\\" + Environment.UserName;
         var start = new ProcessStartInfo
         {
-            FileName = Path.Combine(Environment.SystemDirectory, "icacls.exe"),
+            FileName = Path.Join(Environment.SystemDirectory, "icacls.exe"),
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -70,15 +84,25 @@ internal static class Files
             {
                 process.Kill(entireProcessTree: true);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
+                Debug.WriteLine(ex);
             }
             try
             {
                 Task.WhenAll(stdout, stderr).GetAwaiter().GetResult();
             }
-            catch (Exception)
+            catch (IOException ex)
             {
+                Debug.WriteLine(ex);
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Debug.WriteLine(ex);
+            }
+            catch (AggregateException ex)
+            {
+                Debug.WriteLine(ex);
             }
             throw new IOException($"Could not restrict permissions on {path}: timed out.");
         }
@@ -87,7 +111,4 @@ internal static class Files
             throw new IOException($"Could not restrict permissions on {path}: {stderr.GetAwaiter().GetResult().Trim()}");
         _ = stdout.GetAwaiter().GetResult();
     }
-
-    [DllImport("libc", SetLastError = true)]
-    private static extern int chmod(string path, uint mode);
 }

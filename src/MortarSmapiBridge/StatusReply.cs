@@ -4,7 +4,7 @@ namespace MortarSmapiBridge;
 
 /// <summary>The <c>status</c> reply, shaped like mortar-bepinex-bridge's: <c>gameVersion</c>, <c>gameVersionSource</c>
 /// and <c>plugins</c> (<c>guid</c>, <c>version</c>). SMAPI has no scene and exposes no mod folder, so those keys are
-/// absent. It never carries the overlay or command token.</summary>
+/// absent. It never carries the command token.</summary>
 internal static class StatusReply
 {
     internal const string Line = "status";

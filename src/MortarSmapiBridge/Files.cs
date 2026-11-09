@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace MortarSmapiBridge;
 
@@ -44,17 +45,7 @@ internal static class Files
             return;
         }
 
-        var start = new ProcessStartInfo
-        {
-            FileName = "chmod",
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardError = true
-        };
-        start.ArgumentList.Add("600");
-        start.ArgumentList.Add(path);
-        using var process = Process.Start(start);
-        if (process == null || !process.WaitForExit(10_000) || process.ExitCode != 0)
+        if (chmod(path, 0x180) != 0)
             throw new IOException($"Could not restrict permissions on {path}.");
     }
 
@@ -111,4 +102,8 @@ internal static class Files
             throw new IOException($"Could not restrict permissions on {path}: {stderr.GetAwaiter().GetResult().Trim()}");
         _ = stdout.GetAwaiter().GetResult();
     }
+
+    // SMAPI runs on .NET 6, which has no File.SetUnixFileMode; starting a chmod process from inside the game is worse.
+    [DllImport("libc", SetLastError = true)]
+    private static extern int chmod(string path, uint mode);
 }

@@ -45,24 +45,26 @@ public class BridgeServerTests
     {
         using var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);
         server.Start();
-        var held = new List<TcpClient>();
-        try
+        List<TcpClient> held = [];
+        using var heldClients = new HeldClients(held);
+        for (int i = 0; i < BridgeServer.MaxInFlight; i++)
         {
-            for (int i = 0; i < BridgeServer.MaxInFlight; i++)
-            {
-                var client = new TcpClient();
-                await client.ConnectAsync("127.0.0.1", server.Port);
-                held.Add(client);
-            }
-
-            using var extra = new TcpClient();
-            await extra.ConnectAsync("127.0.0.1", server.Port);
-            using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
-            Assert.Equal(0, await extra.GetStream().ReadAsync(new byte[1], timeout.Token));
+            TcpClient client = new();
+            await client.ConnectAsync("127.0.0.1", server.Port);
+            held.Add(client);
         }
-        finally
+
+        using var extra = new TcpClient();
+        await extra.ConnectAsync("127.0.0.1", server.Port);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+        Assert.Equal(0, await extra.GetStream().ReadAsync(new byte[1], timeout.Token));
+    }
+
+    private sealed class HeldClients(List<TcpClient> clients) : IDisposable
+    {
+        public void Dispose()
         {
-            foreach (TcpClient client in held)
+            foreach (TcpClient client in clients)
                 client.Dispose();
         }
     }

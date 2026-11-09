@@ -37,13 +37,7 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
     {
         if (Interlocked.Exchange(ref this.disposed, 1) != 0)
             return;
-        try
-        {
-            this.Cts.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        this.Cts.Cancel();
         this.Listener.Stop();
         this.Cts.Dispose();
     }
@@ -88,6 +82,7 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or IOException or SocketException or ObjectDisposedException)
                 {
+                    return;
                 }
             }
         }

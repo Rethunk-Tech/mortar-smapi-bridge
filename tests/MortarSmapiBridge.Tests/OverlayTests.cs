@@ -214,11 +214,11 @@ public class OverlayTests
         if (OperatingSystem.IsWindows())
             return;
 
-        string dir = Path.Combine(Path.GetTempPath(), "overlay-config-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Join(Path.GetTempPath(), "overlay-config-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
-            string path = Path.Combine(dir, "config.json");
+            string path = Path.Join(dir, "config.json");
             var config = new ModConfig { OverlayEnabled = true, OverlayToken = "overlay-secret" };
             ModEntry.WriteRestrictedConfig(path, config);
             Assert.Contains("overlay-secret", File.ReadAllText(path), StringComparison.Ordinal);
@@ -238,26 +238,19 @@ public class OverlayTests
         using var server = new OverlayServer(port, "overlay-token");
         server.SetSnapshot(CreateSnapshot());
         server.Start();
-        var held = new List<TcpClient>();
-        try
+        List<TcpClient> held = [];
+        using var heldClients = new HeldClients(held);
+        for (int i = 0; i < OverlayServer.MaxInFlight; i++)
         {
-            for (int i = 0; i < OverlayServer.MaxInFlight; i++)
-            {
-                var client = new TcpClient();
-                await client.ConnectAsync(IPAddress.Loopback, port);
-                held.Add(client);
-            }
+            TcpClient client = new();
+            await client.ConnectAsync(IPAddress.Loopback, port);
+            held.Add(client);
+        }
 
-            using var extra = new TcpClient();
-            await extra.ConnectAsync(IPAddress.Loopback, port);
-            using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
-            Assert.Equal(0, await extra.GetStream().ReadAsync(new byte[1], timeout.Token));
-        }
-        finally
-        {
-            foreach (TcpClient client in held)
-                client.Dispose();
-        }
+        using var extra = new TcpClient();
+        await extra.ConnectAsync(IPAddress.Loopback, port);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+        Assert.Equal(0, await extra.GetStream().ReadAsync(new byte[1], timeout.Token));
     }
 
     [Fact]
@@ -266,6 +259,15 @@ public class OverlayTests
         using var server = new OverlayServer(GetFreePort(), "overlay-token");
         server.Start();
         server.Dispose();
+    }
+
+    private sealed class HeldClients(List<TcpClient> clients) : IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (TcpClient client in clients)
+                client.Dispose();
+        }
     }
 
     private static OverlaySnapshot CreateSnapshot() =>

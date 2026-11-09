@@ -1,6 +1,6 @@
 # Security policy
 
-The licence is in [`LICENSE`](LICENSE). The shipped artifact is a SMAPI mod that listens on loopback only: the command channel uses a per-run token in a user-only state file; the optional overlay uses a persistent token in user-only `config.json`.
+The licence is in [`LICENSE`](LICENSE). The shipped artifact is a SMAPI mod that listens on loopback only: the command channel uses a per-run token in a user-only state file.
 
 ## Reporting a vulnerability
 

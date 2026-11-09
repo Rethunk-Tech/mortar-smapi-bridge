@@ -17,7 +17,7 @@ Build, SMAPI dll override, install, versioning and gate: [HUMANS.md](HUMANS.md).
 **Mortar SMAPI Bridge** lets the Mortar mod manager send SMAPI console commands to a running Stardew Valley, so Mortar can do things like reload or configure mods without you typing in the SMAPI console. It adds no gameplay and changes no game content.
 
 - **Install:** Mortar installs and updates it automatically. Install it by hand only if you want to drive SMAPI commands from your own tool: unzip into `Mods/`.
-- **Requires:** SMAPI 4.5.2 or a later 4.x and Stardew Valley 1.6.14 or later (`MinimumGameVersion`). On SMAPI 5, or a 4.x whose internal console queue moved, the command channel stays off and logs a warning. Stream overlay runs on Stardew Valley 1.6.14 up to, but not including, 1.7; on any other game version it stays off.
+- **Requires:** SMAPI 4.5.2 or a later 4.x and Stardew Valley 1.6.14 or later (`MinimumGameVersion`). On SMAPI 5, or a 4.x whose internal console queue moved, the command channel stays off and logs a warning.
 - **Safety:** it listens on `127.0.0.1` only (never the network, never the internet) and every request needs a random token stored in a file only your user can read. It makes no outgoing connections.
 - **Source and licence:** [github.com/Rethunk-Tech/mortar-smapi-bridge](https://github.com/Rethunk-Tech/mortar-smapi-bridge), AGPL-3.0. Credit: built on SMAPI by Pathoschild (LGPL-3.0), which is referenced, not redistributed.
 
@@ -32,42 +32,6 @@ One connection per command: two LF-terminated lines (`<token>` then `<command li
 Command line is quote-aware (double quotes group, backslash escapes), non-empty, max 4096 bytes; token line max 128 bytes. `ok` means queued for the next update tick as if typed in the SMAPI console; output and unknown-command errors go to the SMAPI log. Received commands log at Trace.
 
 SMAPI has no public API for arbitrary commands (`ICommandHelper` only adds them), so the line is added to `SCore.RawCommandQueue` by reflection. Verified on SMAPI 4 from 4.5.2; SMAPI 5 or a renamed queue turns the channel off with a log message.
-
-## Stream overlay
-
-Off by default. Set `OverlayEnabled` to `true` in user-only `config.json`, set `OverlayPort` (bridge accepts 1–65535; Mortar writes 1024–65535), restart. `OverlayToken` is generated on first enable and is not the command token.
-
-On Stardew Valley 1.6.14–1.6.x the loopback listener serves `GET /state` on `http://127.0.0.1:<OverlayPort>/state`. `HEAD /state` is the same without a body. Unauthenticated `OPTIONS /state` returns 204 with `Allow: GET, HEAD, OPTIONS`, `Access-Control-Allow-Headers: Authorization`, `Access-Control-Allow-Methods: GET, HEAD`. Other methods: 405 with the same `Allow`. Auth: `Authorization: Bearer <OverlayToken>` or `?token=<OverlayToken>`. Unfinished request within 5s is dropped. After the first one-second tick with no save loaded: `{"inGame":false}`. Before that tick, or after a snapshot read failure: 503 `{"error":"state unavailable"}`. In a loaded save the JSON keys are `inGame`, `location`, `playerName`, `season`, `day`, `year`, `timeOfDay`, `money`, `weather`, `health`, `maxHealth`, `stamina`, `maxStamina`, `skills` (`farming`, `fishing`, `foraging`, `mining`, `combat`, `luck`), `dayOfWeek` (`Monday` to `Sunday`) and `daysLeftInSeason` (28 minus the day), then, each omitted when the game does not give it, `friendName` and `friendHearts` (the spouse or roommate, else the NPC with the most hearts, at least 1), `petName`, `petType` (`Cat`, `Dog` or a mod's pet type) and `petWatered` (boolean: the pet's water bowl is filled today). Replies send `Access-Control-Allow-Origin: *`. No path to the command queue.
-
-The snapshot is taken on SMAPI's game thread; the listener serves the last one. Game state is read only when `Context.IsWorldReady`. A snapshot read failure is logged once per distinct message. Outside 1.6.14–1.6.x the overlay stays off (warning); the command channel stays up.
-
-OBS example: [`examples/overlay/index.html`](examples/overlay/index.html) with `?token=...&port=...`. No `field`: full snapshot. `field=<name>`: one value. `label=1`: prefix a short label. Style with `#player` / `.player`, `#skill-farming` / `.skill.farming` (`field=skill.farming` → `#skill-farming`). Off-game the page is blank except `field=inGame` (`true`/`false`). Unreachable or error: blank (one console message per state change).
-
-| `field` | Shown as |
-| --- | --- |
-| `inGame` | `true` or `false` |
-| `location` | location name |
-| `player` | player name |
-| `season` | season |
-| `day` | day of month |
-| `year` | year |
-| `time` | in-game clock (for example `6:10 PM`) |
-| `date` | `Spring 12, Year 2` |
-| `money` | money with a trailing `g` |
-| `weather` | weather |
-| `health` | `current/max` |
-| `stamina` | `current/max` |
-| `weekday` | day of week (`Saturday`) |
-| `daysLeft` | days left in the season |
-| `friend` | `Abigail 8` (spouse, else most hearts); blank when none |
-| `pet` | `Rex (Dog)`; blank when no pet |
-| `petWatered` | `Yes` or `No`; blank when no pet bowl |
-| `skill.farming` | farming level |
-| `skill.fishing` | fishing level |
-| `skill.foraging` | foraging level |
-| `skill.mining` | mining level |
-| `skill.combat` | combat level |
-| `skill.luck` | luck level |
 
 ## GMCM menu capture
 

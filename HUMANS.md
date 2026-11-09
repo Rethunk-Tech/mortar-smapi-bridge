@@ -19,7 +19,7 @@ The SMAPI version and its file hashes are pinned in `scripts/fetch-smapi.sh`, wh
 
 To use an existing install instead: `dotnet build -c Release -p:SmapiDll="/path/to/StardewModdingAPI.dll" -p:SmapiCoreInterfacesDll="/path/to/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" -p:HarmonyDll="/path/to/smapi-internal/0Harmony.dll"`. The fetch is skipped iff all three HintPaths exist, so all three must be passed.
 
-Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`. Overlay `config.json` and HTTP contract: [README.md](README.md#stream-overlay).
+Install by copying `MortarSmapiBridge.dll` and `manifest.json` from `src/MortarSmapiBridge/bin/Release/net6.0/` into `Mods/MortarSmapiBridge/`. Releases ship that folder as `MortarSmapiBridge-<version>.zip` with a `.sha256`.
 
 ## Versioning and release
 

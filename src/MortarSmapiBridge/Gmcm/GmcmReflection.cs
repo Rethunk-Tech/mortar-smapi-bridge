@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 
 namespace MortarSmapiBridge.Gmcm;
@@ -107,7 +108,19 @@ internal static class GmcmReflection
         {
             return Convert.ChangeType(value, nonNull, CultureInfo.InvariantCulture);
         }
-        catch (Exception)
+        catch (InvalidCastException)
+        {
+            return value;
+        }
+        catch (FormatException)
+        {
+            return value;
+        }
+        catch (OverflowException)
+        {
+            return value;
+        }
+        catch (ArgumentException)
         {
             return value;
         }
@@ -173,11 +186,9 @@ internal static class GmcmReflection
 
     private static void SetByte(object color, string member, IDictionary<string, object?> parts, params string[] keys)
     {
-        foreach (string key in keys)
+        foreach (string key in keys.Where(key => parts.TryGetValue(key, out object? raw) && raw != null))
         {
-            if (!parts.TryGetValue(key, out object? raw) || raw == null)
-                continue;
-            byte parsed = Convert.ToByte(raw, CultureInfo.InvariantCulture);
+            byte parsed = Convert.ToByte(parts[key], CultureInfo.InvariantCulture);
             TrySetMemberValue(color, member, parsed);
             return;
         }

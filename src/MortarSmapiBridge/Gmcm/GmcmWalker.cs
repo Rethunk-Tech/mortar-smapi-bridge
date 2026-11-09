@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 
 namespace MortarSmapiBridge.Gmcm;
@@ -291,17 +292,14 @@ internal static class GmcmWalker
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         for (Type? type = option.GetType(); type != null; type = type.BaseType)
         {
-            foreach (FieldInfo field in type.GetFields(flags))
+            foreach (object? candidate in type.GetFields(flags).Select(field => UnwrapDelegateTarget(field.GetValue(option))))
             {
-                object? candidate = UnwrapDelegateTarget(field.GetValue(option));
                 if (IsGmcmOptionsPicker(candidate))
                     return candidate;
             }
 
-            foreach (PropertyInfo property in type.GetProperties(flags))
+            foreach (PropertyInfo property in type.GetProperties(flags).Where(property => property.GetIndexParameters().Length == 0))
             {
-                if (property.GetIndexParameters().Length != 0)
-                    continue;
                 object? candidate = UnwrapDelegateTarget(property.GetValue(option));
                 if (IsGmcmOptionsPicker(candidate))
                     return candidate;

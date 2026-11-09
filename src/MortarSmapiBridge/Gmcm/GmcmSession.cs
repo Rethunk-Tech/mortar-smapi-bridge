@@ -107,8 +107,9 @@ internal sealed class GmcmSession
             {
                 ApplyOne(path, configs);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _monitor.Log("GMCM pending apply failed: " + ex.Message, LogLevel.Trace);
                 WriteResult(path, new GmcmPendingResultFile
                 {
                     Skipped = { new GmcmSkippedEdit { Edit = new GmcmPendingEdit { Name = Path.GetFileNameWithoutExtension(path) }, Reason = "invalid pending JSON" } }
@@ -160,7 +161,7 @@ internal sealed class GmcmSession
                     index.Mods.Add(entry);
             }
 
-            Files.AtomicWrite(Path.Combine(gmcmDir, "_index.json"), JsonSerializer.Serialize(index, JsonOptions), Files.Restrict);
+            Files.AtomicWrite(Path.Join(gmcmDir, "_index.json"), JsonSerializer.Serialize(index, JsonOptions), Files.Restrict);
         }
         catch (Exception ex)
         {
@@ -188,7 +189,7 @@ internal sealed class GmcmSession
                 new GmcmModIdentity { Id = id, Name = name, Version = version },
                 gmcmVersion,
                 capturedAt);
-            string dest = Path.Combine(gmcmDir, SafeFileName(id) + ".json");
+            string dest = Path.Join(gmcmDir, SafeFileName(id) + ".json");
             Files.AtomicWrite(dest, JsonSerializer.Serialize(file, JsonOptions), Files.Restrict);
             entry = new GmcmModIdentity { Id = id, Name = name, Version = version };
             return true;
@@ -344,9 +345,9 @@ internal sealed class GmcmSession
     // ancestor holding profile.json; without one the game was not started by Mortar and nothing is written.
     private string? ProfileDir() => MortarSmapiBridge.Startup.ProfileDirectory.Find(_helper.DirectoryPath);
 
-    private string? CaptureDir() => ProfileDir() is { } dir ? Path.Combine(dir, "gmcm") : null;
+    private string? CaptureDir() => ProfileDir() is { } dir ? Path.Join(dir, "gmcm") : null;
 
-    private string? PendingDir() => ProfileDir() is { } dir ? Path.Combine(dir, "gmcm-pending") : null;
+    private string? PendingDir() => ProfileDir() is { } dir ? Path.Join(dir, "gmcm-pending") : null;
 
     internal static string SafeFileName(string uniqueId)
     {

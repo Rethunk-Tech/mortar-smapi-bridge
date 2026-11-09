@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 
@@ -84,10 +85,8 @@ internal sealed class EventTiming(Func<string, bool>? include = null, Action<str
                 snapshot = new object[handlers.Count];
                 handlers.CopyTo(snapshot, 0);
             }
-            foreach (object handler in snapshot)
+            foreach (object handler in snapshot.Where(this.seen.Add))
             {
-                if (!this.seen.Add(handler))
-                    continue;
                 Type type = handler.GetType();
                 FieldInfo? field = type.GetField("<Handler>k__BackingField", Instance);
                 if (field?.GetValue(handler) is not Delegate original)

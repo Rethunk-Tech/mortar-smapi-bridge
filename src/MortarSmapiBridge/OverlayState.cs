@@ -46,8 +46,8 @@ internal static class OverlayDerived
         }
 
         (string Name, int Hearts)? best = null;
-        foreach ((string Name, int Hearts) npc in all.OrderBy(n => n.Name, StringComparer.Ordinal))
-            if (npc.Hearts > 0 && (best == null || npc.Hearts > best.Value.Hearts))
+        foreach ((string Name, int Hearts) npc in all.OrderBy(n => n.Name, StringComparer.Ordinal).Where(n => n.Hearts > 0))
+            if (best == null || npc.Hearts > best.Value.Hearts)
                 best = npc;
         return best;
     }

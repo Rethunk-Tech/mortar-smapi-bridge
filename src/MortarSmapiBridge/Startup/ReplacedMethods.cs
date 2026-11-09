@@ -10,7 +10,7 @@ internal static class ReplacedMethods
     /// <summary>Harmony ID (by convention the mod's UniqueID) to its replaced methods as "Type.FullName::Method",
     /// sorted. Owners named <paramref name="ownId"/> or prefixed "<paramref name="ownId"/>." are left out.</summary>
     internal static Dictionary<string, List<string>> Collect(string ownId) =>
-        From(Harmony.GetAllPatchedMethods().ToList().Select(m => ((MethodBase Method, Patches? Info))(m, Harmony.GetPatchInfo(m))), ownId);
+        From(Harmony.GetAllPatchedMethods().ToList().Select<MethodBase, (MethodBase Method, Patches? Info)>(m => (m, Harmony.GetPatchInfo(m))), ownId);
 
     internal static Dictionary<string, List<string>> From(IEnumerable<(MethodBase Method, Patches? Info)> patched, string ownId)
     {

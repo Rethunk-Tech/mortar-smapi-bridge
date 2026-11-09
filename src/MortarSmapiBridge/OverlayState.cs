@@ -45,10 +45,10 @@ internal static class OverlayDerived
                     return (name, hearts);
         }
 
-        (string Name, int Hearts)? best = null;
-        foreach ((string Name, int Hearts) npc in all.OrderBy(n => n.Name, StringComparer.Ordinal).Where(n => n.Hearts > 0))
-            if (best == null || npc.Hearts > best.Value.Hearts)
-                best = npc;
-        return best;
+        // MaxBy keeps the first of equal hearts, so a tie goes to the name first in ordinal order.
+        var hearted = all.Where(n => n.Hearts > 0).OrderBy(n => n.Name, StringComparer.Ordinal).ToList();
+        if (hearted.Count == 0)
+            return null;
+        return hearted.MaxBy(n => n.Hearts);
     }
 }

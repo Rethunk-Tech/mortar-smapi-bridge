@@ -10,116 +10,116 @@ using Xunit;
 namespace MortarSmapiBridge.Tests
 {
 
-public sealed class GmcmWalkerTests
-{
-    [Fact]
-    public void CaptureOfOneBrokenModNamesItAndWritesNothing()
+    public sealed class GmcmWalkerTests
     {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Fact]
+        public void CaptureOfOneBrokenModNamesItAndWritesNothing()
         {
-            object broken = new { ModManifest = new { UniqueID = "broken.Mod", Name = "Broken", Version = "1.0.0" } };
-            bool ok = GmcmSession.TryCaptureOne(broken, "1.12.0", DateTimeOffset.UtcNow, dir, out GmcmModIdentity? entry, out string? error);
-            Assert.False(ok);
-            Assert.Null(entry);
-            Assert.StartsWith("broken.Mod: InvalidOperationException", error);
-            Assert.Empty(Directory.GetFiles(dir));
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                object broken = new { ModManifest = new { UniqueID = "broken.Mod", Name = "Broken", Version = "1.0.0" } };
+                bool ok = GmcmSession.TryCaptureOne(broken, "1.12.0", DateTimeOffset.UtcNow, dir, out GmcmModIdentity? entry, out string? error);
+                Assert.False(ok);
+                Assert.Null(entry);
+                Assert.StartsWith("broken.Mod: InvalidOperationException", error);
+                Assert.Empty(Directory.GetFiles(dir));
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
-        finally
+
+        [Fact]
+        public void WalksRegistrationOrderAndNullsGuidFieldIds()
         {
-            Directory.Delete(dir, true);
+            ModConfig config = SampleConfig();
+            GmcmCaptureFile file = GmcmWalker.WalkModConfig(
+                config,
+                new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                "1.12.0",
+                DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
+
+            Assert.Equal(1, file.Schema);
+            Assert.Equal("demo.Mod", file.Mod.Id);
+            Assert.True(file.TitleScreenOnlyDefault);
+            Assert.Equal(2, file.Pages.Count);
+            Assert.Equal("", file.Pages[0].Id);
+            Assert.Equal("extra", file.Pages[1].Id);
+            Assert.Equal("Extras", file.Pages[1].Title);
+
+            GmcmOptionCapture checkbox = file.Pages[0].Options[0];
+            Assert.Equal(0, checkbox.Index);
+            Assert.Equal("bool", checkbox.Kind);
+            Assert.Equal("enableFeature", checkbox.FieldId);
+            Assert.Equal("Enable feature", checkbox.Name);
+            Assert.Equal(true, checkbox.Value);
+            Assert.True(checkbox.Editable);
+
+            GmcmOptionCapture guidField = file.Pages[0].Options[1];
+            Assert.Null(guidField.FieldId);
+            Assert.Equal("string", guidField.Kind);
+            Assert.Equal("Player name", guidField.Name);
+
+            GmcmOptionCapture numeric = file.Pages[0].Options[2];
+            Assert.Equal("int", numeric.Kind);
+            Assert.Equal(1, numeric.Min);
+            Assert.Equal(5, numeric.Max);
+            Assert.Equal(2, numeric.Interval);
+            Assert.Equal(3, numeric.FormatSamples!.Count);
+            Assert.Equal("n=1", numeric.FormatSamples[0].Label);
+
+            GmcmOptionCapture choice = file.Pages[0].Options[3];
+            Assert.Equal("choice", choice.Kind);
+            Assert.Equal("b", choice.Value);
+            Assert.Equal("Bee", choice.Choices!.Single(c => (string?)c.Value == "b").Label);
+
+            Assert.Equal("sectionTitle", file.Pages[0].Options[4].Kind);
+            Assert.False(file.Pages[0].Options[4].Editable);
+            Assert.Equal("pageLink", file.Pages[0].Options[5].Kind);
+            Assert.Equal("extra", file.Pages[0].Options[5].Value);
+            Assert.Equal("complex", file.Pages[0].Options[6].Kind);
+            Assert.False(file.Pages[0].Options[6].Editable);
+
+            GmcmOptionCapture color = file.Pages[0].Options[7];
+            Assert.Equal("color", color.Kind);
+            Assert.True(color.Editable);
+            Dictionary<string, object?> colorValue = Assert.IsType<Dictionary<string, object?>>(color.Value);
+            Assert.Equal(10, colorValue["r"]);
+            Assert.Equal(true, colorValue["showAlpha"]);
+
+            GmcmOptionCapture image = file.Pages[0].Options[8];
+            Assert.Equal("image", image.Kind);
+            Assert.True(image.Editable);
+            Assert.Equal(1, image.Value);
+            Assert.Equal(2, image.Max);
         }
-    }
 
-    [Fact]
-    public void WalksRegistrationOrderAndNullsGuidFieldIds()
-    {
-        ModConfig config = SampleConfig();
-        GmcmCaptureFile file = GmcmWalker.WalkModConfig(
-            config,
-            new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
-            "1.12.0",
-            DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
+        [Fact]
+        public void CaptureJsonShapeOmitsGuidFieldId()
+        {
+            GmcmCaptureFile file = GmcmWalker.WalkModConfig(
+                SampleConfig(),
+                new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                "1.12.0",
+                DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
+            string json = JsonSerializer.Serialize(file, GmcmSession.JsonOptions);
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement options = doc.RootElement.GetProperty("pages")[0].GetProperty("options");
+            Assert.Equal("enableFeature", options[0].GetProperty("fieldId").GetString());
+            Assert.False(options[1].TryGetProperty("fieldId", out _));
+            Assert.Equal(1, doc.RootElement.GetProperty("schema").GetInt32());
+        }
 
-        Assert.Equal(1, file.Schema);
-        Assert.Equal("demo.Mod", file.Mod.Id);
-        Assert.True(file.TitleScreenOnlyDefault);
-        Assert.Equal(2, file.Pages.Count);
-        Assert.Equal("", file.Pages[0].Id);
-        Assert.Equal("extra", file.Pages[1].Id);
-        Assert.Equal("Extras", file.Pages[1].Title);
-
-        GmcmOptionCapture checkbox = file.Pages[0].Options[0];
-        Assert.Equal(0, checkbox.Index);
-        Assert.Equal("bool", checkbox.Kind);
-        Assert.Equal("enableFeature", checkbox.FieldId);
-        Assert.Equal("Enable feature", checkbox.Name);
-        Assert.Equal(true, checkbox.Value);
-        Assert.True(checkbox.Editable);
-
-        GmcmOptionCapture guidField = file.Pages[0].Options[1];
-        Assert.Null(guidField.FieldId);
-        Assert.Equal("string", guidField.Kind);
-        Assert.Equal("Player name", guidField.Name);
-
-        GmcmOptionCapture numeric = file.Pages[0].Options[2];
-        Assert.Equal("int", numeric.Kind);
-        Assert.Equal(1, numeric.Min);
-        Assert.Equal(5, numeric.Max);
-        Assert.Equal(2, numeric.Interval);
-        Assert.Equal(3, numeric.FormatSamples!.Count);
-        Assert.Equal("n=1", numeric.FormatSamples[0].Label);
-
-        GmcmOptionCapture choice = file.Pages[0].Options[3];
-        Assert.Equal("choice", choice.Kind);
-        Assert.Equal("b", choice.Value);
-        Assert.Equal("Bee", choice.Choices!.Single(c => (string?)c.Value == "b").Label);
-
-        Assert.Equal("sectionTitle", file.Pages[0].Options[4].Kind);
-        Assert.False(file.Pages[0].Options[4].Editable);
-        Assert.Equal("pageLink", file.Pages[0].Options[5].Kind);
-        Assert.Equal("extra", file.Pages[0].Options[5].Value);
-        Assert.Equal("complex", file.Pages[0].Options[6].Kind);
-        Assert.False(file.Pages[0].Options[6].Editable);
-
-        GmcmOptionCapture color = file.Pages[0].Options[7];
-        Assert.Equal("color", color.Kind);
-        Assert.True(color.Editable);
-        Dictionary<string, object?> colorValue = Assert.IsType<Dictionary<string, object?>>(color.Value);
-        Assert.Equal(10, colorValue["r"]);
-        Assert.Equal(true, colorValue["showAlpha"]);
-
-        GmcmOptionCapture image = file.Pages[0].Options[8];
-        Assert.Equal("image", image.Kind);
-        Assert.True(image.Editable);
-        Assert.Equal(1, image.Value);
-        Assert.Equal(2, image.Max);
-    }
-
-    [Fact]
-    public void CaptureJsonShapeOmitsGuidFieldId()
-    {
-        GmcmCaptureFile file = GmcmWalker.WalkModConfig(
-            SampleConfig(),
-            new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
-            "1.12.0",
-            DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
-        string json = JsonSerializer.Serialize(file, GmcmSession.JsonOptions);
-        using JsonDocument doc = JsonDocument.Parse(json);
-        JsonElement options = doc.RootElement.GetProperty("pages")[0].GetProperty("options");
-        Assert.Equal("enableFeature", options[0].GetProperty("fieldId").GetString());
-        Assert.False(options[1].TryGetProperty("fieldId", out _));
-        Assert.Equal(1, doc.RootElement.GetProperty("schema").GetInt32());
-    }
-
-    [Fact]
-    public void MatchesStableFieldIdElsePageIndexKindName()
-    {
-        ModConfig config = SampleConfig();
-        List<GmcmPendingEdit> edits =
-        [
-            new GmcmPendingEdit
+        [Fact]
+        public void MatchesStableFieldIdElsePageIndexKindName()
+        {
+            ModConfig config = SampleConfig();
+            List<GmcmPendingEdit> edits =
+            [
+                new GmcmPendingEdit
             {
                 Page = "",
                 Index = 99,
@@ -145,50 +145,50 @@ public sealed class GmcmWalkerTests
                 Name = "Section",
                 Value = true
             }
-        ];
+            ];
 
-        GmcmPendingResultFile result = GmcmApply.ApplyEdits(config, edits);
-        Assert.False((bool)config.Pages[""].Options[0].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[0])!);
-        Assert.Equal("Sam", config.Pages[""].Options[1].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[1]));
-        Assert.Single(result.Skipped);
-        Assert.Equal("kind/name mismatch", result.Skipped[0].Reason);
-        Assert.Equal(2, result.Applied.Count);
-    }
-
-    // Mortar reads these files with its own types; its tests parse copies of these fixtures, so a change to either
-    // side's format shows up as a fixture diff. MORTAR_BRIDGE_WRITE_FIXTURES=1 rewrites them.
-    [Fact]
-    public void CaptureAndResultMatchTheFixturesMortarReads()
-    {
-        ModConfig config = SampleConfig();
-        GmcmCaptureFile capture = GmcmWalker.WalkModConfig(
-            config,
-            new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
-            "1.12.0",
-            DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
-        GmcmPendingResultFile result = GmcmApply.ApplyEdits(config,
-        [
-            new GmcmPendingEdit { Page = "", Index = 2, Kind = "int", Name = "Count", Value = 3 },
-            new GmcmPendingEdit { Page = "", Index = 4, Kind = "bool", Name = "Section", Value = true },
-        ]);
-        AssertFixture("gmcm-capture.json", JsonSerializer.Serialize(capture, GmcmSession.JsonOptions));
-        AssertFixture("gmcm-result.json", JsonSerializer.Serialize(result, GmcmSession.JsonOptions));
-    }
-
-    private static void AssertFixture(string name, string json, [System.Runtime.CompilerServices.CallerFilePath] string source = "")
-    {
-        string path = Path.Join(Path.GetDirectoryName(source)!, "fixtures", name);
-        json = json.Replace("\r\n", "\n") + "\n";
-        if (Environment.GetEnvironmentVariable("MORTAR_BRIDGE_WRITE_FIXTURES") == "1")
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, json);
+            GmcmPendingResultFile result = GmcmApply.ApplyEdits(config, edits);
+            Assert.False((bool)config.Pages[""].Options[0].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[0])!);
+            Assert.Equal("Sam", config.Pages[""].Options[1].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[1]));
+            Assert.Single(result.Skipped);
+            Assert.Equal("kind/name mismatch", result.Skipped[0].Reason);
+            Assert.Equal(2, result.Applied.Count);
         }
 
-        Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n"), json);
-    }
+        // Mortar reads these files with its own types; its tests parse copies of these fixtures, so a change to either
+        // side's format shows up as a fixture diff. MORTAR_BRIDGE_WRITE_FIXTURES=1 rewrites them.
+        [Fact]
+        public void CaptureAndResultMatchTheFixturesMortarReads()
+        {
+            ModConfig config = SampleConfig();
+            GmcmCaptureFile capture = GmcmWalker.WalkModConfig(
+                config,
+                new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                "1.12.0",
+                DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
+            GmcmPendingResultFile result = GmcmApply.ApplyEdits(config,
+            [
+                new GmcmPendingEdit { Page = "", Index = 2, Kind = "int", Name = "Count", Value = 3 },
+            new GmcmPendingEdit { Page = "", Index = 4, Kind = "bool", Name = "Section", Value = true },
+        ]);
+            AssertFixture("gmcm-capture.json", JsonSerializer.Serialize(capture, GmcmSession.JsonOptions));
+            AssertFixture("gmcm-result.json", JsonSerializer.Serialize(result, GmcmSession.JsonOptions));
+        }
 
-    public static TheoryData<string?, object?> UnwrapJsonCases() => new()
+        private static void AssertFixture(string name, string json, [System.Runtime.CompilerServices.CallerFilePath] string source = "")
+        {
+            string path = Path.Join(Path.GetDirectoryName(source)!, "fixtures", name);
+            json = json.Replace("\r\n", "\n") + "\n";
+            if (Environment.GetEnvironmentVariable("MORTAR_BRIDGE_WRITE_FIXTURES") == "1")
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, json);
+            }
+
+            Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n"), json);
+        }
+
+        public static TheoryData<string?, object?> UnwrapJsonCases() => new()
     {
         { "true", true },
         { "false", false },
@@ -201,209 +201,209 @@ public sealed class GmcmWalkerTests
         { "{\"n\":1,\"nested\":{\"s\":\"x\"}}", new Dictionary<string, object?> { ["n"] = 1, ["nested"] = new Dictionary<string, object?> { ["s"] = "x" } } },
     };
 
-    [Theory]
-    [MemberData(nameof(UnwrapJsonCases))]
-    public void UnwrapJsonCoercesJsonElementsAndLeavesOtherValues(string? json, object? expected)
-    {
-        object? input = json == null ? 7 : JsonSerializer.Deserialize<JsonElement>(json);
-        Assert.Equal(expected, GmcmApply.UnwrapJson(input));
-    }
-
-    [Fact]
-    public void LooksLikeGuidDetectsGmcmGeneratedIds()
-    {
-        Assert.True(GmcmFieldIds.LooksLikeGuid("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
-        Assert.False(GmcmFieldIds.LooksLikeGuid("enableFeature"));
-        Assert.False(GmcmFieldIds.LooksLikeGuid(null));
-    }
-
-    [Fact]
-    public void SaveRunsBeforeSaveThenSaveThenAfterSave()
-    {
-        ModConfig config = SampleConfig();
-        List<string> order = config.SaveLog;
-        GmcmApply.SaveLikeGmcm(config);
-        Assert.Equal(
-            Enumerable.Repeat("before", 10).Concat(["save"]).Concat(Enumerable.Repeat("after", 10)).ToArray(),
-            order);
-    }
-
-    [Fact]
-    public void SafeFileNameDoesNotEmitTraversalOrDeviceNames()
-    {
-        Assert.Equal("_", GmcmSession.SafeFileName("."));
-        Assert.Equal("_", GmcmSession.SafeFileName(".."));
-        Assert.Equal("_CON", GmcmSession.SafeFileName("CON"));
-        Assert.Equal("_CON.MyMod", GmcmSession.SafeFileName("CON.MyMod"));
-    }
-
-    [Fact]
-    public void ApplyOneRejectsAnOversizedPendingFileWithoutReadingItAsJson()
-    {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Theory]
+        [MemberData(nameof(UnwrapJsonCases))]
+        public void UnwrapJsonCoercesJsonElementsAndLeavesOtherValues(string? json, object? expected)
         {
-            string path = Path.Join(dir, "huge.json");
-            File.WriteAllBytes(path, new byte[GmcmSession.MaxPendingBytes + 1]);
-            GmcmSession.ApplyOne(path, []);
-            string result = File.ReadAllText(Path.ChangeExtension(path, null) + ".result.json");
-            Assert.Contains("pending file too large", result);
+            object? input = json == null ? 7 : JsonSerializer.Deserialize<JsonElement>(json);
+            Assert.Equal(expected, GmcmApply.UnwrapJson(input));
         }
-        finally
-        {
-            Directory.Delete(dir, true);
-        }
-    }
 
-    [Fact]
-    public void ApplyOneSkipsCorruptJsonAndANullEditsList()
-    {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Fact]
+        public void LooksLikeGuidDetectsGmcmGeneratedIds()
         {
-            string bad = Path.Join(dir, "bad.json");
-            File.WriteAllText(bad, "{");
-            GmcmSession.ApplyOne(bad, []);
-            Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(bad, null) + ".result.json"));
+            Assert.True(GmcmFieldIds.LooksLikeGuid("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
+            Assert.False(GmcmFieldIds.LooksLikeGuid("enableFeature"));
+            Assert.False(GmcmFieldIds.LooksLikeGuid(null));
+        }
 
-            string nullEdits = Path.Join(dir, "nulledits.json");
-            File.WriteAllText(nullEdits, """{"schema":1,"edits":null}""");
-            GmcmSession.ApplyOne(nullEdits, []);
-            Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(nullEdits, null) + ".result.json"));
-        }
-        finally
+        [Fact]
+        public void SaveRunsBeforeSaveThenSaveThenAfterSave()
         {
-            Directory.Delete(dir, true);
+            ModConfig config = SampleConfig();
+            List<string> order = config.SaveLog;
+            GmcmApply.SaveLikeGmcm(config);
+            Assert.Equal(
+                Enumerable.Repeat("before", 10).Concat(["save"]).Concat(Enumerable.Repeat("after", 10)).ToArray(),
+                order);
         }
-    }
 
-    [Fact]
-    public void ApplyUsesUniqueIdInPendingJsonNotTheSanitizedFileName()
-    {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Fact]
+        public void SafeFileNameDoesNotEmitTraversalOrDeviceNames()
         {
-            string id = "Foo.Bar:Mod";
-            string path = Path.Join(dir, GmcmSession.SafeFileName(id) + ".json");
-            Files.AtomicWrite(path, JsonSerializer.Serialize(new GmcmPendingFile { UniqueId = id }, GmcmSession.JsonOptions));
-            var configs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase) { [id] = SampleConfig() };
-            GmcmSession.ApplyOne(path, configs);
-            string resultPath = Path.ChangeExtension(path, null) + ".result.json";
-            string result = File.ReadAllText(resultPath);
-            Assert.DoesNotContain("mod not registered", result);
-            Assert.Equal(id, JsonSerializer.Deserialize<GmcmPendingFile>(File.ReadAllText(path), GmcmSession.JsonOptions)!.UniqueId);
-            AssertOwnerOnly(resultPath);
+            Assert.Equal("_", GmcmSession.SafeFileName("."));
+            Assert.Equal("_", GmcmSession.SafeFileName(".."));
+            Assert.Equal("_CON", GmcmSession.SafeFileName("CON"));
+            Assert.Equal("_CON.MyMod", GmcmSession.SafeFileName("CON.MyMod"));
         }
-        finally
-        {
-            Directory.Delete(dir, true);
-        }
-    }
 
-    [Fact]
-    public void CaptureWritesOwnerOnlyJson()
-    {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-capture-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Fact]
+        public void ApplyOneRejectsAnOversizedPendingFileWithoutReadingItAsJson()
         {
-            bool ok = GmcmSession.TryCaptureOne(SampleConfig(), "1.12.0", DateTimeOffset.UtcNow, dir, out GmcmModIdentity? entry, out string? error);
-            Assert.True(ok);
-            Assert.Null(error);
-            Assert.Equal("demo.Mod", entry!.Id);
-            AssertOwnerOnly(Path.Join(dir, "demo.Mod.json"));
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string path = Path.Join(dir, "huge.json");
+                File.WriteAllBytes(path, new byte[GmcmSession.MaxPendingBytes + 1]);
+                GmcmSession.ApplyOne(path, []);
+                string result = File.ReadAllText(Path.ChangeExtension(path, null) + ".result.json");
+                Assert.Contains("pending file too large", result);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
-        finally
+
+        [Fact]
+        public void ApplyOneSkipsCorruptJsonAndANullEditsList()
         {
-            Directory.Delete(dir, true);
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string bad = Path.Join(dir, "bad.json");
+                File.WriteAllText(bad, "{");
+                GmcmSession.ApplyOne(bad, []);
+                Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(bad, null) + ".result.json"));
+
+                string nullEdits = Path.Join(dir, "nulledits.json");
+                File.WriteAllText(nullEdits, """{"schema":1,"edits":null}""");
+                GmcmSession.ApplyOne(nullEdits, []);
+                Assert.Contains("invalid pending JSON", File.ReadAllText(Path.ChangeExtension(nullEdits, null) + ".result.json"));
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
-    }
 
-    [Fact]
-    public void AtomicWriteReplacesViaTempRename()
-    {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        string path = Path.Join(dir, "demo.Mod.json");
-        Files.AtomicWrite(path, "{\"a\":1}");
-        Files.AtomicWrite(path, "{\"a\":2}");
-        Assert.Equal("{\"a\":2}", File.ReadAllText(path));
-        Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
-    }
-
-    [Fact]
-    public void AtomicWriteRemovesTheTempFileWhenRestrictThrows()
-    {
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Fact]
+        public void ApplyUsesUniqueIdInPendingJsonNotTheSanitizedFileName()
         {
-            string path = Path.Join(dir, "secret.json");
-            Assert.Throws<IOException>(() =>
-                Files.AtomicWrite(path, "token", _ => throw new IOException("restrict failed")));
-            Assert.False(File.Exists(path));
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string id = "Foo.Bar:Mod";
+                string path = Path.Join(dir, GmcmSession.SafeFileName(id) + ".json");
+                Files.AtomicWrite(path, JsonSerializer.Serialize(new GmcmPendingFile { UniqueId = id }, GmcmSession.JsonOptions));
+                var configs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase) { [id] = SampleConfig() };
+                GmcmSession.ApplyOne(path, configs);
+                string resultPath = Path.ChangeExtension(path, null) + ".result.json";
+                string result = File.ReadAllText(resultPath);
+                Assert.DoesNotContain("mod not registered", result);
+                Assert.Equal(id, JsonSerializer.Deserialize<GmcmPendingFile>(File.ReadAllText(path), GmcmSession.JsonOptions)!.UniqueId);
+                AssertOwnerOnly(resultPath);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
+        public void CaptureWritesOwnerOnlyJson()
+        {
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-capture-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                bool ok = GmcmSession.TryCaptureOne(SampleConfig(), "1.12.0", DateTimeOffset.UtcNow, dir, out GmcmModIdentity? entry, out string? error);
+                Assert.True(ok);
+                Assert.Null(error);
+                Assert.Equal("demo.Mod", entry!.Id);
+                AssertOwnerOnly(Path.Join(dir, "demo.Mod.json"));
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
+        public void AtomicWriteReplacesViaTempRename()
+        {
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            string path = Path.Join(dir, "demo.Mod.json");
+            Files.AtomicWrite(path, "{\"a\":1}");
+            Files.AtomicWrite(path, "{\"a\":2}");
+            Assert.Equal("{\"a\":2}", File.ReadAllText(path));
             Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
         }
-        finally
+
+        [Fact]
+        public void AtomicWriteRemovesTheTempFileWhenRestrictThrows()
         {
-            Directory.Delete(dir, true);
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string path = Path.Join(dir, "secret.json");
+                Assert.Throws<IOException>(() =>
+                    Files.AtomicWrite(path, "token", _ => throw new IOException("restrict failed")));
+                Assert.False(File.Exists(path));
+                Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
-    }
 
-    [Fact]
-    public void RestrictLeavesTheFileOwnerReadableAndWritableOnly()
-    {
-        if (OperatingSystem.IsWindows())
-            return;
-
-        string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
+        [Fact]
+        public void RestrictLeavesTheFileOwnerReadableAndWritableOnly()
         {
-            string path = Path.Join(dir, "secret.json");
-            File.WriteAllText(path, "token");
-            Files.Restrict(path);
-            AssertOwnerOnly(path);
+            if (OperatingSystem.IsWindows())
+                return;
+
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string path = Path.Join(dir, "secret.json");
+                File.WriteAllText(path, "token");
+                Files.Restrict(path);
+                AssertOwnerOnly(path);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
-        finally
+
+        private static void AssertOwnerOnly(string path)
         {
-            Directory.Delete(dir, true);
+            if (OperatingSystem.IsWindows())
+                return;
+            UnixFileMode mode = File.GetUnixFileMode(path);
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
         }
-    }
 
-    private static void AssertOwnerOnly(string path)
-    {
-        if (OperatingSystem.IsWindows())
-            return;
-        UnixFileMode mode = File.GetUnixFileMode(path);
-        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
-    }
+        private static ModConfig SampleConfig()
+        {
+            ColorPickerOption colorPicker = new()
+            {
+                getValue = () => new Color { R = 10, G = 20, B = 30, A = 40 },
+                setValue = _ => { },
+                showAlpha = true,
+                style = 2
+            };
+            ImagePickerOption imagePicker = new()
+            {
+                getValue = () => 1,
+                setValue = _ => { },
+                MaxValue = 2,
+                Labels = ["one", "two", "three"]
+            };
 
-    private static ModConfig SampleConfig()
-    {
-        ColorPickerOption colorPicker = new()
-        {
-            getValue = () => new Color { R = 10, G = 20, B = 30, A = 40 },
-            setValue = _ => { },
-            showAlpha = true,
-            style = 2
-        };
-        ImagePickerOption imagePicker = new()
-        {
-            getValue = () => 1,
-            setValue = _ => { },
-            MaxValue = 2,
-            Labels = ["one", "two", "three"]
-        };
-
-        ModConfig config = new()
-        {
-            DefaultTitleScreenOnly = true,
-            ModManifest = new Manifest { UniqueID = "demo.Mod", Name = "Demo", Version = "1.0.0" },
-            Pages =
+            ModConfig config = new()
+            {
+                DefaultTitleScreenOnly = true,
+                ModManifest = new Manifest { UniqueID = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                Pages =
             {
                 [""] = new ModConfigPage
                 {
@@ -442,101 +442,101 @@ public sealed class GmcmWalkerTests
                     Options = { new ParagraphModOption { Name = () => "Hello" } }
                 }
             }
-        };
-        foreach (ModConfigPage page in config.Pages.Values)
-        {
-            foreach (BaseModOption option in page.Options)
-                option.Log = config.SaveLog;
+            };
+            foreach (ModConfigPage page in config.Pages.Values)
+            {
+                foreach (BaseModOption option in page.Options)
+                    option.Log = config.SaveLog;
+            }
+
+            return config;
         }
 
-        return config;
+        public sealed class Manifest
+        {
+            public string UniqueID { get; set; } = "";
+            public string Name { get; set; } = "";
+            public string Version { get; set; } = "";
+        }
+
+        public sealed class ModConfig
+        {
+            public Manifest ModManifest { get; set; } = new();
+            public bool DefaultTitleScreenOnly { get; set; }
+            public Dictionary<string, ModConfigPage> Pages { get; set; } = [];
+            public ModConfig() => Save = () => SaveLog.Add("save");
+
+            public List<string> SaveLog { get; } = [];
+
+            public Action Save { get; }
+        }
+
+        public sealed class ModConfigPage
+        {
+            public Func<string>? PageTitle { get; set; }
+            public List<BaseModOption> Options { get; set; } = [];
+        }
+
+        public abstract class BaseModOption
+        {
+            public string FieldId { get; set; } = "";
+            public Func<string> Name { get; set; } = () => "";
+            public Func<string> Tooltip { get; set; } = () => "";
+            public bool IsTitleScreenOnly { get; set; }
+            public List<string>? Log { get; set; }
+
+            public void BeforeSave() => Log?.Add("before");
+
+            public void AfterSave() => Log?.Add("after");
+        }
+
+        public sealed class SimpleModOption<T> : BaseModOption
+        {
+            public T Value { get; set; } = default!;
+        }
+
+        public sealed class NumericModOption<T> : BaseModOption
+        {
+            public T Value { get; set; } = default!;
+            public T Minimum { get; set; } = default!;
+            public T Maximum { get; set; } = default!;
+            public T Interval { get; set; } = default!;
+            public Func<T, string>? FormatValue { get; set; }
+        }
+
+        public sealed class ChoiceModOption<T> : BaseModOption
+        {
+            public T Value { get; set; } = default!;
+            public T[] Choices { get; set; } = [];
+            public Func<T, string>? FormatChoice { get; set; }
+        }
+
+        public sealed class PageLinkModOption : BaseModOption
+        {
+            public string PageId { get; set; } = "";
+        }
+
+        public sealed class SectionTitleModOption : BaseModOption;
+
+        public sealed class SectionSubHeaderModOption : BaseModOption;
+
+        public sealed class ParagraphModOption : BaseModOption;
+
+        public sealed class ImageModOption : BaseModOption;
+
+        public sealed class ComplexModOption : BaseModOption
+        {
+            public Action<int> Draw { get; set; } = _ => { };
+        }
+
+        public sealed class Color
+        {
+            public byte R { get; set; }
+            public byte G { get; set; }
+            public byte B { get; set; }
+            public byte A { get; set; }
+        }
     }
-
-    public sealed class Manifest
-    {
-        public string UniqueID { get; set; } = "";
-        public string Name { get; set; } = "";
-        public string Version { get; set; } = "";
-    }
-
-    public sealed class ModConfig
-    {
-        public Manifest ModManifest { get; set; } = new();
-        public bool DefaultTitleScreenOnly { get; set; }
-        public Dictionary<string, ModConfigPage> Pages { get; set; } = [];
-        public ModConfig() => Save = () => SaveLog.Add("save");
-
-        public List<string> SaveLog { get; } = [];
-
-        public Action Save { get; }
-    }
-
-    public sealed class ModConfigPage
-    {
-        public Func<string>? PageTitle { get; set; }
-        public List<BaseModOption> Options { get; set; } = [];
-    }
-
-    public abstract class BaseModOption
-    {
-        public string FieldId { get; set; } = "";
-        public Func<string> Name { get; set; } = () => "";
-        public Func<string> Tooltip { get; set; } = () => "";
-        public bool IsTitleScreenOnly { get; set; }
-        public List<string>? Log { get; set; }
-
-        public void BeforeSave() => Log?.Add("before");
-
-        public void AfterSave() => Log?.Add("after");
-    }
-
-    public sealed class SimpleModOption<T> : BaseModOption
-    {
-        public T Value { get; set; } = default!;
-    }
-
-    public sealed class NumericModOption<T> : BaseModOption
-    {
-        public T Value { get; set; } = default!;
-        public T Minimum { get; set; } = default!;
-        public T Maximum { get; set; } = default!;
-        public T Interval { get; set; } = default!;
-        public Func<T, string>? FormatValue { get; set; }
-    }
-
-    public sealed class ChoiceModOption<T> : BaseModOption
-    {
-        public T Value { get; set; } = default!;
-        public T[] Choices { get; set; } = [];
-        public Func<T, string>? FormatChoice { get; set; }
-    }
-
-    public sealed class PageLinkModOption : BaseModOption
-    {
-        public string PageId { get; set; } = "";
-    }
-
-    public sealed class SectionTitleModOption : BaseModOption;
-
-    public sealed class SectionSubHeaderModOption : BaseModOption;
-
-    public sealed class ParagraphModOption : BaseModOption;
-
-    public sealed class ImageModOption : BaseModOption;
-
-    public sealed class ComplexModOption : BaseModOption
-    {
-        public Action<int> Draw { get; set; } = _ => { };
-    }
-
-    public sealed class Color
-    {
-        public byte R { get; set; }
-        public byte G { get; set; }
-        public byte B { get; set; }
-        public byte A { get; set; }
-    }
-}
 }
 
 namespace GMCMOptions.Framework

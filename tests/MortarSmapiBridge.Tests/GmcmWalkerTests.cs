@@ -396,6 +396,42 @@ namespace MortarSmapiBridge.Tests
         }
 
         [Fact]
+        public void WalkModConfigKeepsANumericOptionWhenFormatThrows()
+        {
+            ModConfig config = new()
+            {
+                ModManifest = new Manifest { UniqueID = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                Pages =
+                {
+                    [""] = new ModConfigPage
+                    {
+                        Options =
+                        {
+                            new NumericModOption<int>
+                            {
+                                Name = () => "Reciprocal",
+                                Value = 1,
+                                Minimum = 0,
+                                Maximum = 4,
+                                Interval = 1,
+                                FormatValue = v => (1 / v).ToString()
+                            }
+                        }
+                    }
+                }
+            };
+            GmcmCaptureFile file = GmcmWalker.WalkModConfig(
+                config,
+                new GmcmModIdentity { Id = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                "1.12.0",
+                DateTimeOffset.Parse("2026-01-02T03:04:05Z"));
+            Assert.Single(file.Pages);
+            Assert.Single(file.Pages[0].Options);
+            Assert.Equal("int", file.Pages[0].Options[0].Kind);
+            Assert.Equal("Reciprocal", file.Pages[0].Options[0].Name);
+        }
+
+        [Fact]
         public void AtomicWriteReplacesViaTempRename()
         {
             string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));

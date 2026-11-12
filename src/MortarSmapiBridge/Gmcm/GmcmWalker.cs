@@ -161,6 +161,18 @@ internal static class GmcmWalker
         capture.FormatSamples = SampleFormat(option, capture.Min, capture.Max, capture.Interval, argument);
     }
 
+    private static string InvokeFormat(Delegate format, object value, string fallback)
+    {
+        try
+        {
+            return format.DynamicInvoke(value)?.ToString() ?? fallback;
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
+
     private static List<GmcmFormatSample>? SampleFormat(object option, object? min, object? max, object? interval, Type? argument)
     {
         if (min == null || max == null || interval == null)
@@ -186,7 +198,7 @@ internal static class GmcmWalker
                 samples.Add(new GmcmFormatSample
                 {
                     Value = value,
-                    Label = format.DynamicInvoke(boxed)?.ToString() ?? value.ToString(CultureInfo.InvariantCulture)
+                    Label = InvokeFormat(format, boxed, value.ToString(CultureInfo.InvariantCulture))
                 });
             }
         }
@@ -203,7 +215,7 @@ internal static class GmcmWalker
                 samples.Add(new GmcmFormatSample
                 {
                     Value = value,
-                    Label = format.DynamicInvoke(value)?.ToString() ?? value.ToString(CultureInfo.InvariantCulture)
+                    Label = InvokeFormat(format, value, value.ToString(CultureInfo.InvariantCulture))
                 });
             }
         }
@@ -226,7 +238,9 @@ internal static class GmcmWalker
             capture.Choices.Add(new GmcmChoiceCapture
             {
                 Value = ReadSimpleValue(choice, choice.GetType()),
-                Label = format?.DynamicInvoke(choice)?.ToString() ?? choice.ToString() ?? ""
+                Label = format == null
+                    ? choice.ToString() ?? ""
+                    : InvokeFormat(format, choice, choice.ToString() ?? "")
             });
         }
     }

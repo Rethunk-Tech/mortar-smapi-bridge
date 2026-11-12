@@ -335,6 +335,39 @@ namespace MortarSmapiBridge.Tests
         }
 
         [Fact]
+        public void ApplyOneKeepsResultWhenPendingDeleteFails()
+        {
+            string dir = Path.Join(Path.GetTempPath(), "gmcm-pending-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            string path = Path.Join(dir, "foo.json");
+            string resultPath = Path.ChangeExtension(path, null) + ".result.json";
+            try
+            {
+                ModConfig config = SampleConfig();
+                GmcmPendingFile pending = new()
+                {
+                    Schema = GmcmSchema.Current,
+                    UniqueId = "demo.Mod",
+                    Edits = [new GmcmPendingEdit { Page = "", Index = 0, Kind = "bool", Name = "Enable feature", Value = false }]
+                };
+                File.WriteAllText(path, JsonSerializer.Serialize(pending, GmcmSession.JsonOptions));
+                var configs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase) { ["demo.Mod"] = config };
+
+                using FileStream held = new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                GmcmSession.ApplyOne(path, configs);
+
+                Assert.True(File.Exists(resultPath));
+                GmcmPendingResultFile result = JsonSerializer.Deserialize<GmcmPendingResultFile>(File.ReadAllText(resultPath), GmcmSession.JsonOptions)!;
+                Assert.Contains(result.Applied, edit => edit.Name == "Enable feature");
+                Assert.DoesNotContain(result.Skipped, skip => skip.Reason == "invalid pending JSON");
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
         public void AtomicWriteReplacesViaTempRename()
         {
             string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));

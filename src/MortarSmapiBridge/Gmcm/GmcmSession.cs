@@ -103,18 +103,7 @@ internal sealed class GmcmSession
             if (!name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            try
-            {
-                ApplyOne(path, configs);
-            }
-            catch (Exception ex)
-            {
-                _monitor.Log("GMCM pending apply failed: " + ex.Message, LogLevel.Trace);
-                WriteResult(path, new GmcmPendingResultFile
-                {
-                    Skipped = { new GmcmSkippedEdit { Edit = new GmcmPendingEdit { Name = Path.GetFileNameWithoutExtension(path) }, Reason = "invalid pending JSON" } }
-                });
-            }
+            ApplyOne(path, configs);
         }
     }
 
@@ -276,7 +265,19 @@ internal sealed class GmcmSession
             }
 
             WriteResult(pendingPath, result);
-            File.Delete(pendingPath);
+            try
+            {
+                File.Delete(pendingPath);
+            }
+            catch (IOException ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+
             return;
         }
 

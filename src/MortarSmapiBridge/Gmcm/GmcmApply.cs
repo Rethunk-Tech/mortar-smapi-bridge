@@ -23,6 +23,12 @@ internal static class GmcmApply
 
             try
             {
+                if (UnwrapJson(edit.Value) == null)
+                {
+                    result.Skipped.Add(new GmcmSkippedEdit { Edit = edit, Reason = "missing value" });
+                    continue;
+                }
+
                 if (!TrySetValue(option, edit))
                 {
                     result.Skipped.Add(new GmcmSkippedEdit { Edit = edit, Reason = "could not set value" });
@@ -77,6 +83,7 @@ internal static class GmcmApply
         {
             if (byFieldId.TryGetValue(edit.FieldId, out option))
                 return true;
+
             reason = "fieldId not found";
             return false;
         }

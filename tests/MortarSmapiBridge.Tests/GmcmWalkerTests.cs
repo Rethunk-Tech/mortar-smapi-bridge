@@ -155,6 +155,18 @@ namespace MortarSmapiBridge.Tests
             Assert.Equal(2, result.Applied.Count);
         }
 
+        [Fact]
+        public void ApplyEditsSkipsAValuelessBoolAndLeavesItTrue()
+        {
+            ModConfig config = SampleConfig();
+            GmcmPendingEdit edit = new() { Page = "", Index = 0, Kind = "bool", Name = "Enable feature" };
+            GmcmPendingResultFile result = GmcmApply.ApplyEdits(config, [edit]);
+            Assert.True((bool)config.Pages[""].Options[0].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[0])!);
+            Assert.Empty(result.Applied);
+            Assert.Single(result.Skipped);
+            Assert.Equal("missing value", result.Skipped[0].Reason);
+        }
+
         // Mortar reads these files with its own types; its tests parse copies of these fixtures, so a change to either
         // side's format shows up as a fixture diff. MORTAR_BRIDGE_WRITE_FIXTURES=1 rewrites them.
         [Fact]

@@ -369,6 +369,9 @@ internal sealed class GmcmSession
         if (IsWindowsDeviceName(stem))
             return "_" + name;
 
+        if (name.Equals("_index", StringComparison.OrdinalIgnoreCase))
+            return "__index";
+
         return name;
     }
 

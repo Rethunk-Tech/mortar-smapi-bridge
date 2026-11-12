@@ -247,6 +247,7 @@ namespace MortarSmapiBridge.Tests
             Assert.Equal("_", GmcmSession.SafeFileName(".."));
             Assert.Equal("_CON", GmcmSession.SafeFileName("CON"));
             Assert.Equal("_CON.MyMod", GmcmSession.SafeFileName("CON.MyMod"));
+            Assert.NotEqual("_index", GmcmSession.SafeFileName("_index"), StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]

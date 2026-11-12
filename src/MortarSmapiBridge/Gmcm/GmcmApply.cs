@@ -6,6 +6,8 @@ namespace MortarSmapiBridge.Gmcm;
 
 internal static class GmcmApply
 {
+    private static readonly object DuplicateFieldId = new();
+
     internal static GmcmPendingResultFile ApplyEdits(object modConfig, IReadOnlyList<GmcmPendingEdit> edits)
     {
         GmcmPendingResultFile result = new();
@@ -82,7 +84,16 @@ internal static class GmcmApply
         if (!string.IsNullOrEmpty(edit.FieldId) && !GmcmFieldIds.LooksLikeGuid(edit.FieldId))
         {
             if (byFieldId.TryGetValue(edit.FieldId, out option))
+            {
+                if (ReferenceEquals(option, DuplicateFieldId))
+                {
+                    option = null;
+                    reason = "duplicate fieldId";
+                    return false;
+                }
+
                 return true;
+            }
 
             reason = "fieldId not found";
             return false;
@@ -125,7 +136,12 @@ internal static class GmcmApply
                 byIndex[(page.Key, index)] = option;
                 string? fieldId = GmcmReflection.GetMemberValue(option, "FieldId")?.ToString();
                 if (!string.IsNullOrEmpty(fieldId) && !GmcmFieldIds.LooksLikeGuid(fieldId))
-                    byFieldId[fieldId] = option;
+                {
+                    if (byFieldId.ContainsKey(fieldId))
+                        byFieldId[fieldId] = DuplicateFieldId;
+                    else
+                        byFieldId[fieldId] = option;
+                }
                 index++;
             }
         }

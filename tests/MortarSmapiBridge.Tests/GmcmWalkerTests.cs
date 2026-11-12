@@ -167,6 +167,33 @@ namespace MortarSmapiBridge.Tests
             Assert.Equal("missing value", result.Skipped[0].Reason);
         }
 
+        [Fact]
+        public void ApplyEditsSkipsADuplicateFieldIdAndLeavesBothUntouched()
+        {
+            ModConfig config = new()
+            {
+                ModManifest = new Manifest { UniqueID = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                Pages =
+                {
+                    [""] = new ModConfigPage
+                    {
+                        Options =
+                        {
+                            new SimpleModOption<bool> { FieldId = "foo", Name = () => "A", Value = true },
+                            new SimpleModOption<bool> { FieldId = "foo", Name = () => "B", Value = true }
+                        }
+                    }
+                }
+            };
+            GmcmPendingEdit edit = new() { FieldId = "foo", Value = false };
+            GmcmPendingResultFile result = GmcmApply.ApplyEdits(config, [edit]);
+            Assert.True((bool)config.Pages[""].Options[0].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[0])!);
+            Assert.True((bool)config.Pages[""].Options[1].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[1])!);
+            Assert.Empty(result.Applied);
+            Assert.Single(result.Skipped);
+            Assert.Equal("duplicate fieldId", result.Skipped[0].Reason);
+        }
+
         // Mortar reads these files with its own types; its tests parse copies of these fixtures, so a change to either
         // side's format shows up as a fixture diff. MORTAR_BRIDGE_WRITE_FIXTURES=1 rewrites them.
         [Fact]

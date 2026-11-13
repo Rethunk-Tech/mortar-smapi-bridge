@@ -194,6 +194,34 @@ namespace MortarSmapiBridge.Tests
             Assert.Equal("duplicate fieldId", result.Skipped[0].Reason);
         }
 
+        [Fact]
+        public void ApplyEditsSkipsAnOptionWhoseNameThrowsAndAppliesTheRest()
+        {
+            ModConfig config = new()
+            {
+                ModManifest = new Manifest { UniqueID = "demo.Mod", Name = "Demo", Version = "1.0.0" },
+                Pages =
+                {
+                    [""] = new ModConfigPage
+                    {
+                        Options =
+                        {
+                            new SimpleModOption<bool> { Name = () => throw new InvalidOperationException("no translation"), Value = true },
+                            new SimpleModOption<bool> { Name = () => "B", Value = true }
+                        }
+                    }
+                }
+            };
+            GmcmPendingResultFile result = GmcmApply.ApplyEdits(config,
+            [
+                new GmcmPendingEdit { Page = "", Index = 0, Kind = "bool", Name = "A", Value = false },
+                new GmcmPendingEdit { Page = "", Index = 1, Kind = "bool", Name = "B", Value = false }
+            ]);
+            Assert.Equal("no translation", Assert.Single(result.Skipped).Reason);
+            Assert.Single(result.Applied);
+            Assert.False((bool)config.Pages[""].Options[1].GetType().GetProperty("Value")!.GetValue(config.Pages[""].Options[1])!);
+        }
+
         // Mortar reads these files with its own types; its tests parse copies of these fixtures, so a change to either
         // side's format shows up as a fixture diff. MORTAR_BRIDGE_WRITE_FIXTURES=1 rewrites them.
         [Fact]

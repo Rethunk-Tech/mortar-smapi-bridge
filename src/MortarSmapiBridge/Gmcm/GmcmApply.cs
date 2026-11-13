@@ -17,14 +17,15 @@ internal static class GmcmApply
 
         foreach (GmcmPendingEdit edit in edits)
         {
-            if (!TryMatch(edit, byIndex, byFieldId, out object? option, out string? reason) || option == null)
-            {
-                result.Skipped.Add(new GmcmSkippedEdit { Edit = edit, Reason = reason ?? "unmatched" });
-                continue;
-            }
-
             try
             {
+                // Matching by page and index reads the option's name through the mod's own callback, which can throw.
+                if (!TryMatch(edit, byIndex, byFieldId, out object? option, out string? reason) || option == null)
+                {
+                    result.Skipped.Add(new GmcmSkippedEdit { Edit = edit, Reason = reason ?? "unmatched" });
+                    continue;
+                }
+
                 if (UnwrapJson(edit.Value) == null)
                 {
                     result.Skipped.Add(new GmcmSkippedEdit { Edit = edit, Reason = "missing value" });

@@ -72,16 +72,14 @@ public sealed class ModEntry : Mod
 
     // The questions Mortar asks the running game; anything else is a console command.
     private string? Answer(string line) => line == StatusReply.Line
-        ? StatusReply.Build(ReadGameVersion(this.Helper), this.Helper.ModRegistry.GetAll().Select(mod => (mod.Manifest.UniqueID, mod.Manifest.Version.ToString())))
+        ? StatusReply.Build(GameVersion(GameType()), this.Helper.ModRegistry.GetAll().Select(mod => (mod.Manifest.UniqueID, mod.Manifest.Version.ToString())))
         : this.Profiler?.TryAnswer(line);
 
-    // SMAPI keeps Constants.GameVersion internal and refuses reflection into its own types, so the version comes
-    // from the game's Game1.version, which SMAPI lets a mod reflect on.
-    private static string? ReadGameVersion(IModHelper helper)
-    {
-        Type? game1 = GameType();
-        return game1 == null ? null : helper.Reflection.GetField<string>(game1, "version", false)?.GetValue();
-    }
+    // SMAPI keeps Constants.GameVersion internal, so the version comes from the game's Game1.version. Plain reflection,
+    // not helper.Reflection: status is answered on a socket thread, and SMAPI's reflection cache is one unlocked
+    // Dictionary every mod writes to from the game thread.
+    internal static string? GameVersion(Type? game1) =>
+        game1?.GetField("version", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as string;
 
     internal static (Type? Type, object? Instance) SCore()
     {

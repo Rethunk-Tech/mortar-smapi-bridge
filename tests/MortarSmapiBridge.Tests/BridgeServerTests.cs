@@ -40,6 +40,15 @@ public class BridgeServerTests
         Assert.Equal("error: queue gone", await Ask(server, "secret", "help"));
     }
 
+    private static class Game1
+    {
+        public static readonly string version = "1.6.15";
+    }
+
+    [Fact]
+    public void GameVersionIsReadFromGame1WithoutSmapisSharedReflectionCache() =>
+        Assert.Equal("1.6.15", ModEntry.GameVersion(typeof(Game1)));
+
     [Fact]
     public void StatusListsGameVersionAndModsAndOmitsWhatSmapiCannotGive()
     {

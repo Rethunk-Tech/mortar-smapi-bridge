@@ -170,7 +170,7 @@ internal sealed class StartupSession
             StartupReport report = new()
             {
                 Loader = Constants.ApiVersion.ToString(),
-                Game = GameVersion(),
+                Game = ModEntry.GameVersion(ModEntry.GameType()) ?? "",
                 ProcessStart = this.processStart,
                 Phases = this.phases,
                 EntryTimed = this.entryTimed,
@@ -249,9 +249,6 @@ internal sealed class StartupSession
 
     private long FromTimestamp(long timestamp) =>
         this.Now() - StartupClock.Milliseconds(Stopwatch.GetTimestamp() - timestamp);
-
-    private static string GameVersion() =>
-        ModEntry.GameType()?.GetField("version", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as string ?? "";
 
     internal static object? Game1Menu()
     {

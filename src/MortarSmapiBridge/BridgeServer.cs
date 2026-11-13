@@ -14,6 +14,7 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
     private const int MaxCommandBytes = 4096;
     private const int MaxTokenBytes = 128;
     internal const int MaxInFlight = 8;
+    internal const int TokenDeadlineMs = 1000;
     private static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(5);
 
     private readonly TcpListener Listener = new(IPAddress.Loopback, 0);
@@ -94,7 +95,12 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
 
     private async Task<string> Process(NetworkStream stream, CancellationToken cancel)
     {
-        string? token = await CommandLine.ReadLine(stream, MaxTokenBytes, cancel);
+        string? token;
+        using (var tokenDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancel))
+        {
+            tokenDeadline.CancelAfter(TokenDeadlineMs);
+            token = await CommandLine.ReadLine(stream, MaxTokenBytes, tokenDeadline.Token);
+        }
         if (!CommandLine.TokenMatches(this.Token, token))
             return "error: unauthorized";
 

@@ -37,6 +37,22 @@ internal static class Files
         }
     }
 
+    // A second game instance may have rewritten the file with its own port and token; that one is still live.
+    internal static void DeleteIfUnchanged(string path, string contents)
+    {
+        try
+        {
+            if (File.ReadAllText(path) == contents)
+                File.Delete(path);
+        }
+        catch (FileNotFoundException)
+        {
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+    }
+
     internal static void Restrict(string path)
     {
         if (OperatingSystem.IsWindows())

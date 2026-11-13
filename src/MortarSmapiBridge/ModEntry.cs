@@ -50,7 +50,8 @@ public sealed class ModEntry : Mod
         this.StatePath = Path.Join(helper.DirectoryPath, StateFileName);
         try
         {
-            Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token }), Files.Restrict);
+            this.StateContents = JsonSerializer.Serialize(new { port = this.Server.Port, token });
+            Files.AtomicWrite(this.StatePath, this.StateContents, Files.Restrict);
         }
         catch
         {
@@ -92,6 +93,8 @@ public sealed class ModEntry : Mod
             .FirstOrDefault(assembly => string.Equals(assembly.GetName().Name, "Stardew Valley", StringComparison.OrdinalIgnoreCase))
             ?.GetType("StardewValley.Game1");
 
+    private string? StateContents;
+
     private void Shutdown()
     {
         if (Interlocked.Exchange(ref this.shutdown, 1) != 0)
@@ -104,8 +107,8 @@ public sealed class ModEntry : Mod
         }
         finally
         {
-            if (this.StatePath != null)
-                File.Delete(this.StatePath);
+            if (this.StatePath != null && this.StateContents != null)
+                Files.DeleteIfUnchanged(this.StatePath, this.StateContents);
         }
     }
 

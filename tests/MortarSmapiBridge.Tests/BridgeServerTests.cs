@@ -59,6 +59,17 @@ public class BridgeServerTests
     }
 
     [Fact]
+    public async Task AConnectionThatSendsNoTokenIsClosedAfterTheTokenDeadline()
+    {
+        using var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);
+        server.Start();
+        using var idle = new TcpClient();
+        await idle.ConnectAsync("127.0.0.1", server.Port);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(BridgeServer.TokenDeadlineMs + 1500));
+        Assert.Equal(0, await idle.GetStream().ReadAsync(new byte[1], timeout.Token));
+    }
+
+    [Fact]
     public async Task ExcessConnectionsAreClosed()
     {
         using var server = new BridgeServer("secret", _ => { }, _ => { }, _ => null);

@@ -32,6 +32,15 @@ public class BridgeServerTests
     }
 
     [Fact]
+    public async Task AThrowingSubmitAnswersAnErrorAndTheServerKeepsServing()
+    {
+        using var server = new BridgeServer("secret", line => throw new InvalidOperationException("queue gone"), _ => { }, _ => null);
+        server.Start();
+        Assert.Equal("error: queue gone", await Ask(server, "secret", "help"));
+        Assert.Equal("error: queue gone", await Ask(server, "secret", "help"));
+    }
+
+    [Fact]
     public void StatusListsGameVersionAndModsAndOmitsWhatSmapiCannotGive()
     {
         Assert.Equal(

@@ -48,7 +48,17 @@ public sealed class ModEntry : Mod
         this.Server.Start();
 
         this.StatePath = Path.Join(helper.DirectoryPath, StateFileName);
-        Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token }), Files.Restrict);
+        try
+        {
+            Files.AtomicWrite(this.StatePath, JsonSerializer.Serialize(new { port = this.Server.Port, token }), Files.Restrict);
+        }
+        catch
+        {
+            // Without the state file Mortar cannot find the port, so a listener left running would only be dead weight.
+            this.Server.Dispose();
+            this.Server = null;
+            throw;
+        }
 
         this.Monitor.Log($"Listening on 127.0.0.1:{this.Server.Port}.", LogLevel.Info);
     }

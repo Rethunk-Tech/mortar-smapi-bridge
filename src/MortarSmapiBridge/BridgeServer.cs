@@ -104,10 +104,18 @@ internal sealed class BridgeServer(string token, Action<string> submit, Action<s
         if (!CommandLine.TryParse(line, out string name, out _, out string error))
             return "error: " + error;
 
-        if (this.Query(line) is { } answer)
-            return "ok " + answer;
-        this.Trace(name);
-        this.Submit(line);
-        return "ok";
+        try
+        {
+            if (this.Query(line) is { } answer)
+                return "ok " + answer;
+            this.Trace(name);
+            this.Submit(line);
+            return "ok";
+        }
+        catch (Exception ex)
+        {
+            // Submit reaches SMAPI by reflection and throws when its queue is gone; the client still gets a reply.
+            return "error: " + (ex.InnerException ?? ex).Message.ReplaceLineEndings(" ");
+        }
     }
 }

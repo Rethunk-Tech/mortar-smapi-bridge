@@ -1,8 +1,12 @@
+# A killed dotnet process leaves its debug pipes and diagnostic socket in TMPDIR, and reused MSBuild nodes outlive the
+# run, so every dotnet gate turns both off.
+
 # CI restores with --locked-mode, so a drifted packages.lock.json fails there; the detected build restores unlocked
 # and would pass it. RestoreLockedMode puts the same lock check in the build's own restore, so one MSBuild load does
 # both instead of a second dotnet restore ahead of it.
 [gates.build]
 run = "dotnet build MortarSmapiBridge.slnx -c Release -p:RestoreLockedMode=true"
+env = { DOTNET_EnableDiagnostics = "0", MSBUILDDISABLENODEREUSE = "1" }
 serial = true
 
 # EnforceCodeStyleInBuild with TreatWarningsAsErrors already fails the build on every style and analyzer diagnostic
@@ -10,9 +14,11 @@ serial = true
 # text and needs nothing the build produces, so it runs beside the build instead of after it.
 [gates.format]
 run = "dotnet format whitespace MortarSmapiBridge.slnx --verify-no-changes --no-restore"
+env = { DOTNET_EnableDiagnostics = "0", MSBUILDDISABLENODEREUSE = "1" }
 
 # The test project rather than the solution: same tests, one less project graph. It runs after the build it does not
 # do itself, so the dll under test is the one this run compiled.
 [gates.test]
 run = "dotnet test tests/MortarSmapiBridge.Tests/MortarSmapiBridge.Tests.csproj -c Release --no-build --no-restore"
+env = { DOTNET_EnableDiagnostics = "0", MSBUILDDISABLENODEREUSE = "1" }
 serial = true

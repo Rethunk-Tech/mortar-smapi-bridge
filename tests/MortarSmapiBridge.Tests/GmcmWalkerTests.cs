@@ -464,11 +464,18 @@ namespace MortarSmapiBridge.Tests
         {
             string dir = Path.Join(Path.GetTempPath(), "gmcm-bridge-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
-            string path = Path.Join(dir, "demo.Mod.json");
-            Files.AtomicWrite(path, "{\"a\":1}");
-            Files.AtomicWrite(path, "{\"a\":2}");
-            Assert.Equal("{\"a\":2}", File.ReadAllText(path));
-            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+            try
+            {
+                string path = Path.Join(dir, "demo.Mod.json");
+                Files.AtomicWrite(path, "{\"a\":1}");
+                Files.AtomicWrite(path, "{\"a\":2}");
+                Assert.Equal("{\"a\":2}", File.ReadAllText(path));
+                Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
         }
 
         [Fact]

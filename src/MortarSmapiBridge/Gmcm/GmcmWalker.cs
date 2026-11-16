@@ -364,7 +364,11 @@ internal static class GmcmWalker
                 : null;
             object? coerced = parameters == null ? value : GmcmReflection.Coerce(value, parameters[0]);
             if (value is Dictionary<string, object?> dict && parameters != null)
+            {
+                if (!GmcmReflection.LooksLikeColor(parameters[0]))
+                    return false;
                 coerced = GmcmReflection.ColorFromComponents(parameters[0], dict);
+            }
             del.DynamicInvoke(coerced);
             return true;
         }

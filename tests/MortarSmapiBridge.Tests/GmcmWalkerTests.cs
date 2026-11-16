@@ -195,6 +195,29 @@ namespace MortarSmapiBridge.Tests
         }
 
         [Fact]
+        public void TryInvokeSetterDefaultsMissingColourAlphaToOpaque()
+        {
+            Color setTo = new();
+            ColorPickerOption picker = new() { setValue = c => setTo = c };
+            bool ok = GmcmWalker.TryInvokeSetter(picker, new Dictionary<string, object?> { ["r"] = 10, ["g"] = 20, ["b"] = 30 });
+            Assert.True(ok);
+            Assert.Equal((byte)10, setTo.R);
+            Assert.Equal((byte)20, setTo.G);
+            Assert.Equal((byte)30, setTo.B);
+            Assert.Equal((byte)255, setTo.A);
+        }
+
+        [Fact]
+        public void TryInvokeSetterRejectsADictValueOnANonColourSetter()
+        {
+            int setTo = -1;
+            ImagePickerOption picker = new() { setValue = v => setTo = v };
+            bool ok = GmcmWalker.TryInvokeSetter(picker, new Dictionary<string, object?> { ["r"] = 10, ["g"] = 20, ["b"] = 30 });
+            Assert.False(ok);
+            Assert.Equal(-1, setTo);
+        }
+
+        [Fact]
         public void ApplyEditsSkipsAnOptionWhoseNameThrowsAndAppliesTheRest()
         {
             ModConfig config = new()

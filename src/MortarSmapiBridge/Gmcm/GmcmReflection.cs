@@ -180,7 +180,11 @@ internal static class GmcmReflection
         SetByte(color, "R", parts, "r", "R");
         SetByte(color, "G", parts, "g", "G");
         SetByte(color, "B", parts, "b", "B");
-        SetByte(color, "A", parts, "a", "A");
+        // omitted A is opaque; CreateInstance leaves 0 (transparent)
+        if (parts.ContainsKey("a") || parts.ContainsKey("A"))
+            SetByte(color, "A", parts, "a", "A");
+        else
+            TrySetMemberValue(color, "A", (byte)255);
         return color;
     }
 

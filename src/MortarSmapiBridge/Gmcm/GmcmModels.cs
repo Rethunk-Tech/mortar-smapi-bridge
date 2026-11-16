@@ -138,8 +138,9 @@ internal sealed class GmcmSkippedEdit
 
 internal static class GmcmFieldIds
 {
+    // GMCM generates D-format ids; 32-hex N-format and braced forms are caller field ids.
     public static bool LooksLikeGuid(string? fieldId)
     {
-        return !string.IsNullOrEmpty(fieldId) && Guid.TryParse(fieldId, out _);
+        return !string.IsNullOrEmpty(fieldId) && Guid.TryParseExact(fieldId, "D", out _);
     }
 }

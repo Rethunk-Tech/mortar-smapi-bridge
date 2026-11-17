@@ -70,7 +70,14 @@ internal static class Files
     {
         if (OperatingSystem.IsWindows())
         {
-            File.WriteAllText(path, "");
+            // FileStream copies FileOptions into CreateFile dwFlagsAndAttributes.
+            using var created = new FileStream(
+                path,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 1,
+                (FileOptions)FileFlagOpenReparsePoint);
             return;
         }
 
@@ -88,10 +95,19 @@ internal static class Files
         }
     }
 
-    // O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW; Darwin's fcntl bits are not Linux's.
-    private static int UnixCreateFlags() => OperatingSystem.IsMacOS()
-        ? 1 | 0x0200 | 0x0400 | 0x0100
-        : 1 | 64 | 512 | 131072;
+    // open(2) bits are per OS; Linux x86_64 and arm64 share asm-generic fcntl.h.
+    internal const int LinuxCreateFlags = 1 | 0x40 | 0x80 | 0x200 | 0x20000; // O_WRONLY|O_CREAT|O_EXCL|O_TRUNC|O_NOFOLLOW
+    internal const int DarwinCreateFlags = 1 | 0x0200 | 0x0800 | 0x0400 | 0x0100;
+    internal const uint FileFlagOpenReparsePoint = 0x00200000;
+
+    internal static int UnixCreateFlags()
+    {
+        if (OperatingSystem.IsLinux())
+            return LinuxCreateFlags;
+        if (OperatingSystem.IsMacOS())
+            return DarwinCreateFlags;
+        throw new PlatformNotSupportedException();
+    }
 
     private static void RestrictWindows(string path)
     {

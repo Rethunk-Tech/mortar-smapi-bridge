@@ -10,7 +10,27 @@
 
 The SMAPI loader's companion for [Mortar](https://github.com/Rethunk-Tech/mortar): a SMAPI mod that lets Mortar send console commands to a running SMAPI game (Stardew Valley today). Other loaders have their own companion ([mortar-bepinex-bridge](https://github.com/Rethunk-Tech/mortar-bepinex-bridge) for BepInEx). Mortar starts the game through its launcher and reads SMAPI's log, so it has no stdin; this mod is the input channel.
 
-Build, SMAPI dll override, install, versioning and gate: [HUMANS.md](HUMANS.md).
+## Quick start
+
+```sh
+dotnet build -c Release
+```
+
+Prerequisites, SMAPI dll override, install into `Mods/`, versioning and `gate`: [HUMANS.md](HUMANS.md).
+
+## Highlights
+
+- Listens on `127.0.0.1` with a per-launch token so Mortar can queue SMAPI console commands.
+- Captures Generic Mod Config Menu pages and applies pending edits from the Mortar profile directory.
+- Records startup and per-frame timings for mods in a Mortar profile.
+- Skips the title intro when Mortar writes `startup/skip-intro`.
+
+## Documentation
+
+| Doc | What |
+| --- | --- |
+| [HUMANS.md](HUMANS.md) | Build, install, versioning, release |
+| [AGENTS.md](AGENTS.md) | File layout, invariants, agent rules |
 
 ## Nexus page description
 
@@ -95,5 +115,7 @@ SMAPI's `performance` counters are a rolling average and peak per mod and event,
   ```
 
   `measured` stays true on every summary. `active` is true only while a window is running. `msPerFrame` averages over every frame (a rare mod: small average, high peak). `p95Ms` is the 95th percentile of per-frame cost over all frames (zero if it ran in fewer than 5% of them), ~10% resolution. `share` is `msPerFrame` over the average frame. `baseline.withoutModsMs` is average frame minus timed handlers (game + SMAPI + Harmony/content work outside events), not a no-mods measurement; profile an empty profile for that.
+
+## License
 
 Licensed under [AGPL-3.0](LICENSE). SMAPI is LGPL-3.0, referenced not redistributed.

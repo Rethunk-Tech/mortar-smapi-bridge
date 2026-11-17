@@ -6,6 +6,7 @@ namespace MortarSmapiBridge;
 internal static class Files
 {
     // restrict runs on the still-empty temp file, so its contents are never readable by others.
+    // File.WriteAllText creates 0666&~umask; another local user can keep that 0644 fd through chmod and read the token.
     internal static void AtomicWrite(string path, string contents, Action<string>? restrict = null)
     {
         string temp = path + ".tmp";
@@ -13,7 +14,7 @@ internal static class Files
         {
             if (restrict != null)
             {
-                File.WriteAllText(temp, "");
+                CreateOwnerOnly(temp);
                 restrict(temp);
             }
             File.WriteAllText(temp, contents);
@@ -64,6 +65,33 @@ internal static class Files
         if (chmod(path, 0x180) != 0)
             throw new IOException($"Could not restrict permissions on {path}.");
     }
+
+    private static void CreateOwnerOnly(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            File.WriteAllText(path, "");
+            return;
+        }
+
+        int fd = open(path, UnixCreateFlags(), 0x180);
+        if (fd < 0)
+            throw new IOException($"Could not restrict permissions on {path}.");
+        try
+        {
+            if (fchmod(fd, 0x180) != 0)
+                throw new IOException($"Could not restrict permissions on {path}.");
+        }
+        finally
+        {
+            _ = close(fd);
+        }
+    }
+
+    // O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW; Darwin's fcntl bits are not Linux's.
+    private static int UnixCreateFlags() => OperatingSystem.IsMacOS()
+        ? 1 | 0x0200 | 0x0400 | 0x0100
+        : 1 | 64 | 512 | 131072;
 
     private static void RestrictWindows(string path)
     {
@@ -122,4 +150,13 @@ internal static class Files
     // SMAPI runs on .NET 6, which has no File.SetUnixFileMode; starting a chmod process from inside the game is worse.
     [DllImport("libc", SetLastError = true)]
     private static extern int chmod(string path, uint mode);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int open(string path, int flags, int mode);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int fchmod(int fd, uint mode);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int close(int fd);
 }

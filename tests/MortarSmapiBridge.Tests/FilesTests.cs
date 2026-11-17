@@ -23,4 +23,41 @@ public class FilesTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void AtomicWriteRestrictsTheTempFileBeforeItHoldsTheSecret()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        string dir = Path.Join(Path.GetTempPath(), "mortar-state-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Join(dir, "mortar-smapi-bridge.json");
+            UnixFileMode? modeBeforeContents = null;
+            string? contentsBeforeRestrict = null;
+            Files.AtomicWrite(path, "token", temp =>
+            {
+                modeBeforeContents = UnixMode(temp);
+                contentsBeforeRestrict = File.ReadAllText(temp);
+                Files.Restrict(temp);
+            });
+            Assert.Equal("", contentsBeforeRestrict);
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, modeBeforeContents);
+            Assert.Equal("token", File.ReadAllText(path));
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, UnixMode(path));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    private static UnixFileMode UnixMode(string path)
+    {
+        if (OperatingSystem.IsWindows())
+            return UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        return File.GetUnixFileMode(path);
+    }
 }

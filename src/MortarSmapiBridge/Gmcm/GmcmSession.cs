@@ -395,8 +395,6 @@ internal sealed class GmcmSession
     private static void WriteResult(string pendingPath, GmcmPendingResultFile result)
     {
         string dest = Path.ChangeExtension(pendingPath, ".result.json");
-        if (dest.EndsWith(".json.result.json", StringComparison.Ordinal))
-            dest = pendingPath[..^".json".Length] + ".result.json";
         Files.AtomicWrite(dest, JsonSerializer.Serialize(result, JsonOptions), Files.Restrict);
     }
 }

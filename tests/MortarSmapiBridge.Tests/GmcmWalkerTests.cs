@@ -685,11 +685,7 @@ namespace MortarSmapiBridge.Tests
 
         public sealed class SectionTitleModOption : BaseModOption;
 
-        public sealed class SectionSubHeaderModOption : BaseModOption;
-
         public sealed class ParagraphModOption : BaseModOption;
-
-        public sealed class ImageModOption : BaseModOption;
 
         public sealed class ComplexModOption : BaseModOption
         {

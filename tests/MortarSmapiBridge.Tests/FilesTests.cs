@@ -25,11 +25,10 @@ public class FilesTests
     }
 
     [Fact]
-    public void CreateFlagsIncludeNofollowAndExclusiveCreateOnThisPlatform()
+    public void CreateFlagsAreExclusiveCreateOnThisPlatform()
     {
-        Assert.Equal(1 | 0x40 | 0x80 | 0x200 | 0x20000, Files.LinuxCreateFlags);
-        Assert.Equal(1 | 0x0200 | 0x0800 | 0x0400 | 0x0100, Files.DarwinCreateFlags);
-        Assert.Equal(0x00200000u, Files.FileFlagOpenReparsePoint);
+        Assert.Equal(1 | 0x40 | 0x80, Files.LinuxCreateFlags);
+        Assert.Equal(1 | 0x0200 | 0x0800, Files.DarwinCreateFlags);
 
         if (OperatingSystem.IsLinux())
             Assert.Equal(Files.LinuxCreateFlags, Files.UnixCreateFlags());

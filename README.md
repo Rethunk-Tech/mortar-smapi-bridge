@@ -99,7 +99,7 @@ Inside a Mortar profile, when `startup/skip-intro` exists in the profile folder 
 
 ## Frame timings
 
-Off until Mortar asks; nothing is wrapped before then. `perf start` (answered `ok {"measured":true}`) begins a window on the next update tick: every mod's per-frame handlers (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and World / ActiveMenu / Hud / Step variants) become timed delegates, the same swap startup timing uses, so a mod that removes its own handler still can. Window max ten minutes; wrappers come off then and the last summary stays. `perf stop` unwraps on the next tick and answers with that summary (`ok` plus the same JSON as `perf`). `perf start` again restarts it.
+Off until Mortar asks; nothing is wrapped before then. `perf start` (answered `ok {"measured":true}`) begins a window on the next update tick: every mod's per-frame handlers (`UpdateTicking`, `UpdateTicked`, `OneSecondUpdateTicking`, `OneSecondUpdateTicked`, `Rendering`, `Rendered`, and World / ActiveMenu / Hud / Step variants) become timed delegates, the same swap startup timing uses, so a mod that removes its own handler still can. Window max ten minutes; wrappers come off then and the last summary stays. `perf stop` unwraps on the next tick and answers with that summary (`ok` plus the same JSON as `perf`). Every `perf`, `perf start` and `perf stop` reply carries `"stoppable":true`, which tells Mortar to offer the stop. `perf start` again restarts it.
 
 SMAPI's `performance` counters are a rolling average and peak per mod and event, with no 95th percentile and no share of the frame, so handlers are timed here.
 

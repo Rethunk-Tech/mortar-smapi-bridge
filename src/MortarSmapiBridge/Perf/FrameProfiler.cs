@@ -80,17 +80,20 @@ internal sealed class FrameProfiler
         switch (line)
         {
             case "perf":
-                return summary;
+                return Stoppable(summary);
             case "perf start":
                 start = true;
-                return "{\"measured\":true}";
+                return Stoppable("{\"measured\":true}");
             case "perf stop":
                 stop = true;
-                return summary;
+                return Stoppable(summary);
             default:
                 return null;
         }
     }
+
+    /// <summary>Marks a reply as from a companion that answers <c>perf stop</c>, so Mortar offers the stop.</summary>
+    private static string Stoppable(string json) => "{\"stoppable\":true," + json[1..];
 
     private void Record(string mod, string eventName, long ticks)
     {

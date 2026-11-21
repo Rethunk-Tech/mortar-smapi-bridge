@@ -7,15 +7,16 @@ namespace MortarSmapiBridge.Tests;
 public class FrameProfilerTests
 {
     private const string Summary = "{\"measured\":true,\"frames\":3}";
+    private const string Stoppable = "{\"stoppable\":true,\"measured\":true,\"frames\":3}";
 
     [Fact]
-    public void PerfAndPerfStartStayTheExistingReplies()
+    public void PerfRepliesSayTheyAreStoppable()
     {
-        Assert.Equal(Summary, FrameProfiler.Query("perf", Summary, out bool perfStart, out bool perfStop));
+        Assert.Equal(Stoppable, FrameProfiler.Query("perf", Summary, out bool perfStart, out bool perfStop));
         Assert.False(perfStart);
         Assert.False(perfStop);
 
-        Assert.Equal("{\"measured\":true}", FrameProfiler.Query("perf start", Summary, out bool start, out bool startStop));
+        Assert.Equal("{\"stoppable\":true,\"measured\":true}", FrameProfiler.Query("perf start", Summary, out bool start, out bool startStop));
         Assert.True(start);
         Assert.False(startStop);
     }
@@ -24,7 +25,7 @@ public class FrameProfilerTests
     public void PerfStopReturnsTheCurrentSummaryAndIsNotAConsoleLine()
     {
         string? json = FrameProfiler.Query("perf stop", Summary, out bool start, out bool stop);
-        Assert.Equal(Summary, json);
+        Assert.Equal(Stoppable, json);
         Assert.False(start);
         Assert.True(stop);
         Assert.Null(FrameProfiler.Query("help", Summary, out _, out _));
